@@ -1,11 +1,5 @@
 package com.vidacruz.triage;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
@@ -17,12 +11,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,8 +30,6 @@ class TriageEventsAcceptanceIntegrationTest {
     @Autowired
     private WebTestClient client;
 
-    private final ObjectMapper json = new ObjectMapper();
-
     @DynamicPropertySource
     static void environment(DynamicPropertyRegistry registry) {
         TestEnvironment.register(registry);
@@ -53,7 +41,7 @@ class TriageEventsAcceptanceIntegrationTest {
         changeStatus(id, "EN_CONSULTA");
         changeStatus(id, "ALTA");
 
-        var events = eventsOf(id, 3);
+        var events = TriageTopicReader.eventsOf(id, 3, Duration.ofSeconds(30));
 
         assertThat(events).extracting(event -> event.get("type").asText())
                 .containsExactly("paciente_registrado", "paciente_en_consulta", "paciente_alta");
@@ -86,31 +74,5 @@ class TriageEventsAcceptanceIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).bodyValue("{\"estado\": \"" + status + "\"}")
                 .exchange()
                 .expectStatus().isOk();
-    }
-
-    /** Reads the topic from the beginning until the expected events of the patient arrive (or 30 s pass). */
-    private List<JsonNode> eventsOf(String patientId, int expected) throws Exception {
-        var values = new ArrayList<String>();
-        try (var consumer = new KafkaConsumer<String, String>(Map.of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, TestEnvironment.kafkaBootstrapServers(),
-                ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest",
-                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class))) {
-            consumer.subscribe(List.of(TestEnvironment.EVENTS_TOPIC));
-            var deadline = Instant.now().plusSeconds(30);
-            while (values.size() < expected && Instant.now().isBefore(deadline)) {
-                for (ConsumerRecord<String, String> consumed : consumer.poll(Duration.ofMillis(500))) {
-                    if (patientId.equals(consumed.key())) {
-                        values.add(consumed.value());
-                    }
-                }
-            }
-        }
-        var events = new ArrayList<JsonNode>();
-        for (var value : values) {
-            events.add(json.readTree(value));
-        }
-        return events;
     }
 }

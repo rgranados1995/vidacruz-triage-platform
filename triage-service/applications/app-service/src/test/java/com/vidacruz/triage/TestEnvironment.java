@@ -45,6 +45,8 @@ final class TestEnvironment {
         registry.add("TRIAGE_EVENTS_TOPIC", () -> EVENTS_TOPIC);
         registry.add("TRIAGE_EVENTS_PARTITIONS", () -> "3");
         registry.add("TRIAGE_EVENTS_REPLICAS", () -> "1");
+        registry.add("SLA_MONITOR_INTERVAL", () -> "300ms");
+        registry.add("SLA_MONITOR_BATCH_SIZE", () -> "50");
         registry.add("OUTBOX_POLL_INTERVAL", () -> "200ms");
         registry.add("OUTBOX_BATCH_SIZE", () -> "50");
         registry.add("OUTBOX_LEASE", () -> "10s");

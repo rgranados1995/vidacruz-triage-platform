@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -34,23 +36,38 @@ public class PostgresPatientRepository implements PatientRepository {
     public Mono<Patient> register(PatientChange registration) {
         return PatientBinder.bindNewPatient(client.sql(PatientSql.INSERT_PATIENT), registration.patient())
                 .fetch().rowsUpdated()
-                .then(insertAudit(registration.auditEntry()))
-                .then(outboxWriter.write(registration))
-                .thenReturn(registration.patient())
+                .then(record(registration))
                 .as(transactionalOperator::transactional);
     }
 
     @Override
     public Mono<Patient> update(PatientChange change) {
-        return PatientBinder.bindChange(client.sql(PatientSql.UPDATE_PATIENT), change)
-                .fetch().rowsUpdated()
-                .filter(rows -> rows == 1L)
+        return PatientBinder.bindChange(client.sql(PatientSql.UPDATE_STATUS), change)
+                .map(PatientRowMapper::toPatient)
+                .one()
                 .switchIfEmpty(Mono.defer(() -> Mono.error(
                         new BusinessException(BusinessError.INVALID_STATUS_TRANSITION, CONCURRENT_CHANGE))))
-                .then(insertAudit(change.auditEntry()))
-                .then(outboxWriter.write(change))
-                .thenReturn(change.patient())
+                .flatMap(stored -> record(withStored(change, stored)))
                 .as(transactionalOperator::transactional);
+    }
+
+    @Override
+    public Mono<Patient> escalate(PatientChange escalation) {
+        return client.sql(PatientSql.ESCALATE)
+                .bind("id", escalation.patient().getId())
+                .map(PatientRowMapper::toPatient)
+                .one()
+                .flatMap(stored -> record(withStored(escalation, stored)))
+                .as(transactionalOperator::transactional);
+    }
+
+    @Override
+    public Flux<Patient> findOverdue(Instant now, int limit) {
+        return client.sql(PatientSql.SELECT_OVERDUE)
+                .bind("now", now)
+                .bind("limit", limit)
+                .map(PatientRowMapper::toPatient)
+                .all();
     }
 
     @Override
@@ -59,6 +76,18 @@ public class PostgresPatientRepository implements PatientRepository {
                 .bind("id", id)
                 .map(PatientRowMapper::toPatient)
                 .one();
+    }
+
+    /** Audit entry and outbox event of an applied change, inside the transaction of the caller. */
+    private Mono<Patient> record(PatientChange applied) {
+        return insertAudit(applied.auditEntry())
+                .then(outboxWriter.write(applied))
+                .thenReturn(applied.patient());
+    }
+
+    /** The same change with the patient as stored, which may carry flags changed meanwhile by others. */
+    private static PatientChange withStored(PatientChange change, Patient stored) {
+        return new PatientChange(stored, change.previousStatus(), change.auditEntry());
     }
 
     private Mono<Long> insertAudit(AuditEntry entry) {

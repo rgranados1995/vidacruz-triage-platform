@@ -31,6 +31,19 @@ public record PatientChange(Patient patient, PatientStatus previousStatus, Audit
         return new PatientChange(moved, current.getStatus(), entry);
     }
 
+    /**
+     * Escalation of RF-03. The audit entry keeps REGISTERED as the status before and after, because the change is the
+     * flag (RN-04).
+     *
+     * @throws IllegalStateException when the patient cannot be escalated
+     */
+    public static PatientChange escalation(Patient current, Instant at) {
+        var escalated = current.escalate();
+        var entry = new AuditEntry(current.getId(), PatientEventType.ESCALATED, PatientStatus.REGISTERED,
+                PatientStatus.REGISTERED, at);
+        return new PatientChange(escalated, PatientStatus.REGISTERED, entry);
+    }
+
     public boolean isRegistration() {
         return previousStatus == null;
     }

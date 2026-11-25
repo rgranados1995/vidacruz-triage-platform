@@ -25,9 +25,11 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -183,6 +185,86 @@ class PostgresPatientRepositoryIntegrationTest {
                 .verify();
 
         assertAuditCount(patient.getId(), 1);
+    }
+
+    @Test
+    void shouldEscalateOnlyOnceWhenTwoRoundsEscalateTheSamePatient() {
+        var patient = register(newPatient());
+        var firstRound = PatientChange.escalation(patient, LATER);
+        var secondRound = PatientChange.escalation(patient, LATER);
+
+        StepVerifier.create(Flux.merge(repository.escalate(firstRound), repository.escalate(secondRound))
+                        .collectList())
+                .assertNext(applied -> assertThat(applied).singleElement()
+                        .satisfies(escalated -> assertThat(escalated.isEscalated()).isTrue()))
+                .verifyComplete();
+
+        assertAuditCount(patient.getId(), 2);
+        assertOutboxTypes(patient.getId(), "paciente_registrado", "paciente_escalado");
+        StepVerifier.create(repository.findById(patient.getId()))
+                .expectNextMatches(Patient::isEscalated)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldNotEscalateAPatientThatAlreadyEnteredTheConsultation() {
+        var waiting = register(newPatient());
+        StepVerifier.create(repository.update(PatientChange.transition(waiting, PatientStatus.IN_CONSULTATION,
+                LATER))).expectNextCount(1).verifyComplete();
+
+        StepVerifier.create(repository.escalate(PatientChange.escalation(waiting, LATER))).verifyComplete();
+
+        assertAuditCount(waiting.getId(), 2);
+        assertOutboxTypes(waiting.getId(), "paciente_registrado", "paciente_en_consulta");
+    }
+
+    @Test
+    void shouldKeepTheEscalationWhenTheConsultationStartsFromAnOlderRead() {
+        var readBeforeEscalation = register(newPatient());
+        StepVerifier.create(repository.escalate(PatientChange.escalation(readBeforeEscalation, LATER)))
+                .expectNextCount(1).verifyComplete();
+
+        StepVerifier.create(repository.update(PatientChange.transition(readBeforeEscalation,
+                        PatientStatus.IN_CONSULTATION, LATER.plusSeconds(60))))
+                .assertNext(stored -> {
+                    assertThat(stored.getStatus()).isEqualTo(PatientStatus.IN_CONSULTATION);
+                    assertThat(stored.isEscalated()).as("the flag set by the monitor survives").isTrue();
+                })
+                .verifyComplete();
+        StepVerifier.create(client.sql("""
+                        SELECT (payload->'data'->>'escalado')::boolean AS escalated FROM outbox_event
+                         WHERE aggregate_id = :id AND event_type = 'paciente_en_consulta'""")
+                        .bind("id", readBeforeEscalation.getId())
+                        .map(row -> row.get("escalated", Boolean.class)).one())
+                .expectNext(Boolean.TRUE)
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldFindOnlyTheRegisteredPatientsNotEscalatedWhoseSlaPassed() {
+        var now = Instant.parse("2020-01-01T12:00:00Z");
+        var overdueOld = register(registeredAt(now.minus(Duration.ofMinutes(50))));
+        var overdueRecent = register(registeredAt(now.minus(Duration.ofMinutes(6))));
+        var withinSla = register(registeredAt(now.minus(Duration.ofMinutes(4))));
+        var escalated = register(registeredAt(now.minus(Duration.ofMinutes(40))));
+        StepVerifier.create(repository.escalate(PatientChange.escalation(escalated, now))).expectNextCount(1)
+                .verifyComplete();
+        var attended = register(registeredAt(now.minus(Duration.ofMinutes(30))));
+        StepVerifier.create(repository.update(PatientChange.transition(attended, PatientStatus.IN_CONSULTATION,
+                now))).expectNextCount(1).verifyComplete();
+
+        StepVerifier.create(repository.findOverdue(now, 10).map(Patient::getId).collectList())
+                .assertNext(ids -> assertThat(ids).containsExactly(overdueOld.getId(), overdueRecent.getId())
+                        .doesNotContain(withinSla.getId(), escalated.getId(), attended.getId()))
+                .verifyComplete();
+        StepVerifier.create(repository.findOverdue(now, 1).map(Patient::getId))
+                .expectNext(overdueOld.getId())
+                .verifyComplete();
+    }
+
+    private static Patient registeredAt(Instant registeredAt) {
+        return newPatient().toBuilder().id(UUID.randomUUID()).registeredAt(registeredAt).statusChangedAt(registeredAt)
+                .build();
     }
 
     private Patient register(Patient patient) {

@@ -54,4 +54,26 @@ public class Patient {
     public Duration timeInCurrentStatus(Instant now) {
         return Duration.between(statusChangedAt, now);
     }
+
+    /**
+     * RF-03: the patient is still waiting for the consultation, was not escalated yet and its SLA (RN-02) already
+     * passed. A patient in consultation or discharged is never overdue (RN-03).
+     */
+    public boolean isOverdue(Instant now) {
+        return status == PatientStatus.REGISTERED
+                && !escalated
+                && now.isAfter(registeredAt.plus(Duration.ofMinutes(slaMinutes)));
+    }
+
+    /**
+     * Sets the persistent escalation flag; the status does not change.
+     *
+     * @throws IllegalStateException when the patient is not waiting or was already escalated (RN-03)
+     */
+    public Patient escalate() {
+        if (status != PatientStatus.REGISTERED || escalated) {
+            throw new IllegalStateException("Only a registered patient not escalated yet can be escalated");
+        }
+        return toBuilder().escalated(true).build();
+    }
 }

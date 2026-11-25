@@ -43,6 +43,10 @@ adapters:
       partitions: ${TRIAGE_EVENTS_PARTITIONS}
       replicas: ${TRIAGE_EVENTS_REPLICAS}
 
+sla-monitor:
+  interval: ${SLA_MONITOR_INTERVAL}
+  batch-size: ${SLA_MONITOR_BATCH_SIZE}
+
 outbox:
   poll-interval: ${OUTBOX_POLL_INTERVAL}
   batch-size: ${OUTBOX_BATCH_SIZE}

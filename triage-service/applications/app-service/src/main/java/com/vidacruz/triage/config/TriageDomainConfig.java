@@ -2,6 +2,7 @@ package com.vidacruz.triage.config;
 
 import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
 import com.vidacruz.triage.model.triage.AdministrativeComplaints;
+import com.vidacruz.triage.model.triage.SlaMonitorPolicy;
 import com.vidacruz.triage.model.triage.SlaPolicy;
 import com.vidacruz.triage.model.triage.TriageClassifier;
 import com.vidacruz.triage.model.validation.PatientDataValidator;
@@ -17,7 +18,7 @@ import java.time.temporal.ChronoUnit;
  * Domain services used by the use cases. The domain has no framework annotations, so they are created here.
  */
 @Configuration
-@EnableConfigurationProperties({TriageProperties.class, OutboxProperties.class})
+@EnableConfigurationProperties({TriageProperties.class, OutboxProperties.class, SlaMonitorProperties.class})
 public class TriageDomainConfig {
 
     /**
@@ -42,6 +43,11 @@ public class TriageDomainConfig {
     @Bean
     public PatientDataValidator patientDataValidator() {
         return new PatientDataValidator();
+    }
+
+    @Bean
+    public SlaMonitorPolicy slaMonitorPolicy(SlaMonitorProperties properties) {
+        return new SlaMonitorPolicy(properties.batchSize());
     }
 
     @Bean

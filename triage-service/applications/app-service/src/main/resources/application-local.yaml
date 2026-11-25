@@ -23,6 +23,10 @@ adapters:
       partitions: 3
       replicas: 1
 
+sla-monitor:
+  interval: 15s
+  batch-size: 100
+
 outbox:
   poll-interval: 500ms
   batch-size: 100

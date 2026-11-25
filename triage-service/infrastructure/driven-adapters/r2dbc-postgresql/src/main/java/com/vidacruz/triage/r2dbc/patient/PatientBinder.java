@@ -32,6 +32,7 @@ final class PatientBinder {
                 .bind("chiefComplaint", patient.getChiefComplaint())
                 .bind("triageLevel", patient.getTriageLevel().name())
                 .bind("slaMinutes", patient.getSlaMinutes())
+                .bind("escalated", patient.isEscalated())
                 .bind("registeredAt", patient.getRegisteredAt());
         return bindState(withIdentity, patient);
     }
@@ -56,7 +57,6 @@ final class PatientBinder {
     private static GenericExecuteSpec bindState(GenericExecuteSpec spec, Patient patient) {
         var withState = spec
                 .bind("status", patient.getStatus().name())
-                .bind("escalated", patient.isEscalated())
                 .bind("statusChangedAt", patient.getStatusChangedAt());
         return nullable(withState, "consultationStartedAt", patient.getConsultationStartedAt(), Instant.class);
     }

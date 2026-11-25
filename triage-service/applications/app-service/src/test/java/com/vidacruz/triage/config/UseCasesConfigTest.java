@@ -7,6 +7,7 @@ import com.vidacruz.triage.model.patient.gateways.PatientRepository;
 import com.vidacruz.triage.model.triage.SlaPolicy;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.usecase.changepatientstatus.ChangePatientStatusUseCase;
+import com.vidacruz.triage.usecase.escalateoverduesla.EscalateOverdueSlaUseCase;
 import com.vidacruz.triage.usecase.getpatient.GetPatientUseCase;
 import com.vidacruz.triage.usecase.publishpendingevents.PublishPendingEventsUseCase;
 import com.vidacruz.triage.usecase.registerpatient.RegisterPatientUseCase;
@@ -37,6 +38,7 @@ class UseCasesConfigTest {
                     "triage.sla-minutes.NON_URGENT_2=120",
                     "triage.administrative-complaints=documentos,renovación de recetario",
                     "outbox.batch-size=50",
+                    "sla-monitor.batch-size=20",
                     "outbox.lease=30s");
 
     @Test
@@ -46,7 +48,8 @@ class UseCasesConfigTest {
                 .hasSingleBean(RegisterPatientUseCase.class)
                 .hasSingleBean(ChangePatientStatusUseCase.class)
                 .hasSingleBean(GetPatientUseCase.class)
-                .hasSingleBean(PublishPendingEventsUseCase.class));
+                .hasSingleBean(PublishPendingEventsUseCase.class)
+                .hasSingleBean(EscalateOverdueSlaUseCase.class));
     }
 
     @Test
