@@ -1,0 +1,7 @@
+**/build
+.gradle
+build-cache
+deployment
+.idea
+*.iml
+.vscode
