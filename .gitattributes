@@ -1,0 +1,6 @@
+# The Docker build runs ./gradlew on Linux: shell scripts must keep LF even on Windows checkouts (core.autocrlf)
+* text=auto
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.jar binary
