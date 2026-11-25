@@ -76,6 +76,9 @@ services:
       SLA_MINUTES_NON_URGENT: 60
       SLA_MINUTES_NON_URGENT_2: 120
       ADMINISTRATIVE_COMPLAINTS: "documentos,recolección de resultados,renovación de recetario,vacunación,seguimiento"
+      # Local-only key; deployed environments read it from a secret
+      API_KEY: ${TRIAGE_API_KEY:-local-dev-api-key-0001}
+      API_DOCS_ENABLED: "true"
     ports:
       - "8081:8081"
     depends_on:

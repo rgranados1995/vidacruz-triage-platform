@@ -18,6 +18,8 @@ final class TestEnvironment {
      */
     static final String LOG_LEVEL = "LOG_LEVEL=INFO";
 
+    static final String API_KEY = "integration-test-api-key";
+
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16.16-alpine");
 
     static {
@@ -26,6 +28,8 @@ final class TestEnvironment {
 
     static void register(DynamicPropertyRegistry registry) {
         registry.add("TRACING_SAMPLING_PROBABILITY", () -> "1.0");
+        registry.add("API_KEY", () -> API_KEY);
+        registry.add("API_DOCS_ENABLED", () -> "true");
         registry.add("DB_HOST", POSTGRES::getHost);
         registry.add("DB_PORT", () -> POSTGRES.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT));
         registry.add("DB_NAME", POSTGRES::getDatabaseName);

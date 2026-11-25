@@ -30,6 +30,20 @@ triage:
     NON_URGENT_2: ${SLA_MINUTES_NON_URGENT_2}
   administrative-complaints: ${ADMINISTRATIVE_COMPLAINTS}
 
+routes:
+  patients: /triage/pacientes
+
+security:
+  api-key: ${API_KEY}
+
+springdoc:
+  # Builds the OpenAPI document at startup: building it on the first request scans the classpath on a Netty thread
+  pre-loading-enabled: true
+  api-docs:
+    enabled: ${API_DOCS_ENABLED}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED}
+
 logging:
   structured:
     format:

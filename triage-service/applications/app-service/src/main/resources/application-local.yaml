@@ -23,6 +23,15 @@ triage:
     NON_URGENT_2: 120
   administrative-complaints: documentos, recolección de resultados, renovación de recetario, vacunación, seguimiento
 
+security:
+  api-key: local-dev-api-key-0001
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 logging:
   level:
     root: INFO
