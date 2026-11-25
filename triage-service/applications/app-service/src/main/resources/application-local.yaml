@@ -13,6 +13,20 @@ spring:
     url: jdbc:postgresql://localhost:5432/triage
     user: triage
     password: triage-local
+  kafka:
+    bootstrap-servers: localhost:29092
+
+adapters:
+  kafka:
+    triage-events:
+      name: triaje.eventos
+      partitions: 3
+      replicas: 1
+
+outbox:
+  poll-interval: 500ms
+  batch-size: 100
+  lease: 30s
 
 triage:
   sla-minutes:

@@ -6,6 +6,7 @@ import com.vidacruz.triage.model.exception.BusinessException;
 import com.vidacruz.triage.model.patient.Patient;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.gateways.PatientRepository;
+import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -15,8 +16,9 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 /**
- * PostgreSQL storage of patients over R2DBC. Each change and its audit entry are written in one transaction, and a
- * change applies only if nobody changed the status in between (the stored status is part of the update condition).
+ * PostgreSQL storage of patients over R2DBC. Each change, its audit entry and its outbox event are written in one
+ * transaction, and a change applies only if nobody changed the status in between (the stored status is part of the
+ * update condition).
  */
 @Repository
 @RequiredArgsConstructor
@@ -26,12 +28,14 @@ public class PostgresPatientRepository implements PatientRepository {
 
     private final DatabaseClient client;
     private final TransactionalOperator transactionalOperator;
+    private final OutboxWriter outboxWriter;
 
     @Override
     public Mono<Patient> register(PatientChange registration) {
         return PatientBinder.bindNewPatient(client.sql(PatientSql.INSERT_PATIENT), registration.patient())
                 .fetch().rowsUpdated()
                 .then(insertAudit(registration.auditEntry()))
+                .then(outboxWriter.write(registration))
                 .thenReturn(registration.patient())
                 .as(transactionalOperator::transactional);
     }
@@ -44,6 +48,7 @@ public class PostgresPatientRepository implements PatientRepository {
                 .switchIfEmpty(Mono.defer(() -> Mono.error(
                         new BusinessException(BusinessError.INVALID_STATUS_TRANSITION, CONCURRENT_CHANGE))))
                 .then(insertAudit(change.auditEntry()))
+                .then(outboxWriter.write(change))
                 .thenReturn(change.patient())
                 .as(transactionalOperator::transactional);
     }

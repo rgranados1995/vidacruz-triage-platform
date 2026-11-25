@@ -3,6 +3,7 @@ package com.vidacruz.triage.api.patient;
 import com.vidacruz.triage.api.patient.dto.PatientDetailResponse;
 import com.vidacruz.triage.api.patient.dto.RegisterPatientRequest;
 import com.vidacruz.triage.api.patient.dto.RegisteredPatientResponse;
+import com.vidacruz.triage.contract.ContractCodes;
 import com.vidacruz.triage.model.patient.Patient;
 import com.vidacruz.triage.model.patient.PatientIntake;
 import com.vidacruz.triage.model.patient.VitalSigns;
@@ -35,8 +36,8 @@ final class PatientMapper {
     }
 
     static RegisteredPatientResponse toRegistered(Patient patient) {
-        return new RegisteredPatientResponse(patient.getId(), ContractValues.levelCode(patient.getTriageLevel()),
-                patient.getSlaMinutes(), ContractValues.statusCode(patient.getStatus()), patient.getRegisteredAt());
+        return new RegisteredPatientResponse(patient.getId(), ContractCodes.levelCode(patient.getTriageLevel()),
+                patient.getSlaMinutes(), ContractCodes.statusCode(patient.getStatus()), patient.getRegisteredAt());
     }
 
     static PatientDetailResponse toDetail(PatientDetail detail) {
@@ -54,9 +55,9 @@ final class PatientMapper {
                 .painLevel(signs.painLevel())
                 .glasgowComaScale(signs.glasgowComaScale())
                 .chiefComplaint(patient.getChiefComplaint())
-                .level(ContractValues.levelCode(patient.getTriageLevel()))
+                .level(ContractCodes.levelCode(patient.getTriageLevel()))
                 .slaMinutes(patient.getSlaMinutes())
-                .status(ContractValues.statusCode(patient.getStatus()))
+                .status(ContractCodes.statusCode(patient.getStatus()))
                 .escalated(patient.isEscalated())
                 .registeredAt(patient.getRegisteredAt())
                 .statusChangedAt(patient.getStatusChangedAt())

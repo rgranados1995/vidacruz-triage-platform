@@ -35,6 +35,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created by their owner service, never by a typo in a producer
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     ports:
       - "29092:29092"
     healthcheck:
@@ -79,6 +81,13 @@ services:
       # Local-only key; deployed environments read it from a secret
       API_KEY: ${TRIAGE_API_KEY:-local-dev-api-key-0001}
       API_DOCS_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      TRIAGE_EVENTS_TOPIC: triaje.eventos
+      TRIAGE_EVENTS_PARTITIONS: 3
+      TRIAGE_EVENTS_REPLICAS: 1
+      OUTBOX_POLL_INTERVAL: 500ms
+      OUTBOX_BATCH_SIZE: 100
+      OUTBOX_LEASE: 30s
     ports:
       - "8081:8081"
     depends_on:

@@ -1,6 +1,9 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
+    implementation project(':scheduler')
+    implementation project(':kafka-producer')
+    implementation project(':triage-contract')
     implementation project(':reactive-web')
     implementation project(':r2dbc-postgresql')
     implementation project(':model')
@@ -15,6 +18,8 @@ dependencies {
     testImplementation 'org.springframework:spring-r2dbc'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.apache.kafka:kafka-clients'
 }
 
 tasks.register('explodedJar', Copy) {

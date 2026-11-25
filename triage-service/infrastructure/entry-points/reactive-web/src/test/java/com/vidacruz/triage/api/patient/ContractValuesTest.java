@@ -2,7 +2,6 @@ package com.vidacruz.triage.api.patient;
 
 import com.vidacruz.triage.api.error.InvalidRequestException;
 import com.vidacruz.triage.model.patient.PatientStatus;
-import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.model.validation.PatientField;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -12,22 +11,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The values of the contract are the ones of the statement; a rename in the domain must not change them.
- */
 class ContractValuesTest {
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @CsvSource({"CRITICAL, CRITICO", "URGENT, URGENTE", "URGENT_2, URGENTE_2", "NON_URGENT, NO_URGENTE",
-            "NON_URGENT_2, NO_URGENTE_2"})
-    void shouldPublishEachLevelWithTheCodeOfTheStatement(TriageLevel level, String code) {
-        assertThat(ContractValues.levelCode(level)).isEqualTo(code);
-    }
-
-    @ParameterizedTest(name = "{0} <-> {1}")
+    @ParameterizedTest(name = "{1} -> {0}")
     @CsvSource({"REGISTERED, REGISTRADO", "IN_CONSULTATION, EN_CONSULTA", "DISCHARGED, ALTA"})
-    void shouldMapEachStatusBothWays(PatientStatus status, String code) {
-        assertThat(ContractValues.statusCode(status)).isEqualTo(code);
+    void shouldReadEachStatusOfTheContract(PatientStatus status, String code) {
         assertThat(ContractValues.statusFrom(code)).isEqualTo(status);
     }
 
@@ -36,8 +24,10 @@ class ContractValuesTest {
     @ValueSource(strings = {"en_consulta", "OBSERVACION", "IN_CONSULTATION"})
     void shouldRejectAStatusOutsideTheContract(String code) {
         assertThatThrownBy(() -> ContractValues.statusFrom(code))
-                .isInstanceOfSatisfying(InvalidRequestException.class,
-                        error -> assertThat(error.getField()).isEqualTo("estado"));
+                .isInstanceOfSatisfying(InvalidRequestException.class, error -> {
+                    assertThat(error.getField()).isEqualTo("estado");
+                    assertThat(error.getReason()).isEqualTo("El estado debe ser REGISTRADO, EN_CONSULTA o ALTA");
+                });
     }
 
     @ParameterizedTest(name = "{0} -> {1}")

@@ -9,6 +9,7 @@ import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.PatientStatus;
 import com.vidacruz.triage.model.patient.VitalSigns;
 import com.vidacruz.triage.model.triage.TriageLevel;
+import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
 import io.r2dbc.postgresql.PostgresqlConnectionFactory;
 import io.r2dbc.spi.ConnectionFactory;
@@ -44,6 +45,8 @@ class PostgresPatientRepositoryIntegrationTest {
     private static final Instant REGISTERED_AT = Instant.parse("2026-11-25T10:00:00Z");
     private static final Instant LATER = REGISTERED_AT.plusSeconds(300);
     private static final String COUNT_AUDIT = "SELECT COUNT(*) AS total FROM clinical_audit WHERE patient_id = :id";
+    private static final String OUTBOX_TYPES = """
+            SELECT event_type FROM outbox_event WHERE aggregate_id = :id ORDER BY id""";
 
     private static ConnectionFactory connectionFactory;
 
@@ -69,7 +72,7 @@ class PostgresPatientRepositoryIntegrationTest {
     void setUp() {
         client = DatabaseClient.create(connectionFactory);
         var transactions = TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory));
-        repository = new PostgresPatientRepository(client, transactions);
+        repository = new PostgresPatientRepository(client, transactions, new OutboxWriter(client));
     }
 
     @Test
@@ -91,6 +94,18 @@ class PostgresPatientRepositoryIntegrationTest {
                     assertThat(row).containsEntry("event_type", "REGISTERED").containsEntry("new_status", "REGISTERED");
                     assertThat(row.get("previous_status")).isNull();
                     assertThat(row.get("occurred_at")).isNotNull();
+                })
+                .verifyComplete();
+        StepVerifier.create(client.sql("""
+                        SELECT event_type, payload->>'type' AS cloud_type, payload->>'subject' AS subject,
+                               published_at
+                          FROM outbox_event WHERE aggregate_id = :id""")
+                        .bind("id", patient.getId()).fetch().one())
+                .assertNext(row -> {
+                    assertThat(row).containsEntry("event_type", "paciente_registrado")
+                            .containsEntry("cloud_type", "paciente_registrado")
+                            .containsEntry("subject", patient.getId().toString());
+                    assertThat(row.get("published_at")).isNull();
                 })
                 .verifyComplete();
     }
@@ -116,6 +131,7 @@ class PostgresPatientRepositoryIntegrationTest {
                 })
                 .verifyComplete();
         assertAuditCount(patient.getId(), 2);
+        assertOutboxTypes(patient.getId(), "paciente_registrado", "paciente_en_consulta");
     }
 
     @Test
@@ -137,6 +153,7 @@ class PostgresPatientRepositoryIntegrationTest {
                 .expectNextMatches(found -> found.getStatus() == PatientStatus.DISCHARGED)
                 .verifyComplete();
         assertAuditCount(patient.getId(), 2);
+        assertOutboxTypes(patient.getId(), "paciente_registrado", "paciente_alta");
     }
 
     @Test
@@ -150,6 +167,7 @@ class PostgresPatientRepositoryIntegrationTest {
                 .verify();
 
         StepVerifier.create(repository.findById(patient.getId())).verifyComplete();
+        assertOutboxTypes(patient.getId());
     }
 
     @ParameterizedTest(name = "{0}")
@@ -177,6 +195,13 @@ class PostgresPatientRepositoryIntegrationTest {
         StepVerifier.create(client.sql(COUNT_AUDIT).bind("id", patientId).map(row -> row.get("total", Long.class))
                         .one())
                 .expectNext(expected)
+                .verifyComplete();
+    }
+
+    private void assertOutboxTypes(UUID patientId, String... expected) {
+        StepVerifier.create(client.sql(OUTBOX_TYPES).bind("id", patientId)
+                        .map(row -> row.get("event_type", String.class)).all().collectList())
+                .assertNext(types -> assertThat(types).containsExactly(expected))
                 .verifyComplete();
     }
 

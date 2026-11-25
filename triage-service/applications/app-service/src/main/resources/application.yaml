@@ -20,6 +20,33 @@ spring:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     user: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        # A send gives up before the outbox lease (OUTBOX_LEASE) expires, so no other replica claims it meanwhile
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 20000
+    admin:
+      # Kafka down at startup must not keep the triage from starting: events wait in the outbox
+      fail-fast: false
+      operation-timeout: 10s
+
+adapters:
+  kafka:
+    triage-events:
+      name: ${TRIAGE_EVENTS_TOPIC}
+      partitions: ${TRIAGE_EVENTS_PARTITIONS}
+      replicas: ${TRIAGE_EVENTS_REPLICAS}
+
+outbox:
+  poll-interval: ${OUTBOX_POLL_INTERVAL}
+  batch-size: ${OUTBOX_BATCH_SIZE}
+  lease: ${OUTBOX_LEASE}
 
 triage:
   sla-minutes:

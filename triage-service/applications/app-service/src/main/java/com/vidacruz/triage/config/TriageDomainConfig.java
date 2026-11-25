@@ -1,5 +1,6 @@
 package com.vidacruz.triage.config;
 
+import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
 import com.vidacruz.triage.model.triage.AdministrativeComplaints;
 import com.vidacruz.triage.model.triage.SlaPolicy;
 import com.vidacruz.triage.model.triage.TriageClassifier;
@@ -9,18 +10,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Domain services used by the use cases. The domain has no framework annotations, so they are created here.
  */
 @Configuration
-@EnableConfigurationProperties(TriageProperties.class)
+@EnableConfigurationProperties({TriageProperties.class, OutboxProperties.class})
 public class TriageDomainConfig {
 
-    /** UTC clock: every instant is stored and published in UTC. */
+    /**
+     * UTC clock with microsecond precision, the precision PostgreSQL stores: an instant answered or published right
+     * after a change is the same one read back later.
+     */
     @Bean
     public Clock clock() {
-        return Clock.systemUTC();
+        return Clock.tick(Clock.systemUTC(), Duration.of(1, ChronoUnit.MICROS));
     }
 
     @Bean
@@ -36,5 +42,10 @@ public class TriageDomainConfig {
     @Bean
     public PatientDataValidator patientDataValidator() {
         return new PatientDataValidator();
+    }
+
+    @Bean
+    public OutboxRelayPolicy outboxRelayPolicy(OutboxProperties properties) {
+        return new OutboxRelayPolicy(properties.batchSize(), properties.lease());
     }
 }
