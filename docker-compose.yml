@@ -62,6 +62,20 @@ services:
       SERVER_PORT: 8081
       LOG_LEVEL: INFO
       TRACING_SAMPLING_PROBABILITY: "1.0"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: triage
+      DB_USERNAME: ${POSTGRES_USER:-triage}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-triage-local}
+      DB_POOL_INITIAL_SIZE: 2
+      DB_POOL_MAX_SIZE: 10
+      # SLA of RN-02 in minutes; lower them to watch the escalation without waiting
+      SLA_MINUTES_CRITICAL: 5
+      SLA_MINUTES_URGENT: 10
+      SLA_MINUTES_URGENT_2: 30
+      SLA_MINUTES_NON_URGENT: 60
+      SLA_MINUTES_NON_URGENT_2: 120
+      ADMINISTRATIVE_COMPLAINTS: "documentos,recolección de resultados,renovación de recetario,vacunación,seguimiento"
     ports:
       - "8081:8081"
     depends_on:

@@ -9,6 +9,26 @@ spring:
     add-properties: false
   reactor:
     context-propagation: auto
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    pool:
+      initial-size: ${DB_POOL_INITIAL_SIZE}
+      max-size: ${DB_POOL_MAX_SIZE}
+  flyway:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    user: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+triage:
+  sla-minutes:
+    CRITICAL: ${SLA_MINUTES_CRITICAL}
+    URGENT: ${SLA_MINUTES_URGENT}
+    URGENT_2: ${SLA_MINUTES_URGENT_2}
+    NON_URGENT: ${SLA_MINUTES_NON_URGENT}
+    NON_URGENT_2: ${SLA_MINUTES_NON_URGENT_2}
+  administrative-complaints: ${ADMINISTRATIVE_COMPLAINTS}
 
 logging:
   structured:
@@ -28,6 +48,10 @@ management:
       probes:
         enabled: true
       show-details: never
+      group:
+        # The database takes the pod out of the load balancer; it never restarts it (liveness has no dependencies)
+        readiness:
+          include: readinessState, r2dbc
   metrics:
     tags:
       application: ${spring.application.name}

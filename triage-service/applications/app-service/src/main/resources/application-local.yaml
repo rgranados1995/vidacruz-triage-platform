@@ -1,6 +1,28 @@
 server:
   port: 8081
 
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/triage
+    username: triage
+    password: triage-local
+    pool:
+      initial-size: 2
+      max-size: 10
+  flyway:
+    url: jdbc:postgresql://localhost:5432/triage
+    user: triage
+    password: triage-local
+
+triage:
+  sla-minutes:
+    CRITICAL: 5
+    URGENT: 10
+    URGENT_2: 30
+    NON_URGENT: 60
+    NON_URGENT_2: 120
+  administrative-complaints: documentos, recolección de resultados, renovación de recetario, vacunación, seguimiento
+
 logging:
   level:
     root: INFO

@@ -5,22 +5,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Starts the real application context: unit tests do not catch missing properties or broken auto-configuration.
+ * Starts the real application against PostgreSQL: unit tests do not catch missing properties, migrations that do
+ * not apply or broken auto-configuration.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = TestEnvironment.LOG_LEVEL)
 @AutoConfigureWebTestClient
 @AutoConfigureObservability
-@ActiveProfiles("local")
-class ApplicationStartupTest {
+class ApplicationStartupIntegrationTest {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @DynamicPropertySource
+    static void environment(DynamicPropertyRegistry registry) {
+        TestEnvironment.register(registry);
+    }
 
     @Test
     void shouldReportLivenessUp() {
@@ -31,7 +37,7 @@ class ApplicationStartupTest {
     }
 
     @Test
-    void shouldReportReadinessUp() {
+    void shouldReportReadinessUpWhenTheDatabaseIsReachable() {
         webTestClient.get().uri("/health/readiness")
                 .exchange()
                 .expectStatus().isOk()

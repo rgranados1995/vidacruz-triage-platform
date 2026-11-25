@@ -55,7 +55,8 @@ subprojects {
     pitest {
         targetClasses = ['com.vidacruz.triage.*']
         excludedClasses = []
-        excludedTestClasses = []
+        // Integration tests start containers: running them once per mutant would take hours
+        excludedTestClasses = ['*IntegrationTest']
         pitestVersion = '1.20.6'
         verbose = false
         outputFormats = ['XML', 'HTML']
