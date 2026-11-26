@@ -11,6 +11,7 @@ buildscript {
         anthropicVersion = '3.8.0'
         wiremockVersion = '3.13.2'
         resilience4jVersion = '2.4.0'
+        reactorKafkaVersion = '1.3.25'
 	}
 }
 

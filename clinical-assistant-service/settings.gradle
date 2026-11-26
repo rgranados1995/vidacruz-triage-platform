@@ -24,3 +24,7 @@ include ':protocol-corpus'
 project(':protocol-corpus').projectDir = file('./infrastructure/driven-adapters/protocol-corpus')
 include ':claude-llm'
 project(':claude-llm').projectDir = file('./infrastructure/driven-adapters/claude-llm')
+include ':kafka-consumer'
+project(':kafka-consumer').projectDir = file('./infrastructure/entry-points/kafka-consumer')
+include ':redis'
+project(':redis').projectDir = file('./infrastructure/driven-adapters/redis')

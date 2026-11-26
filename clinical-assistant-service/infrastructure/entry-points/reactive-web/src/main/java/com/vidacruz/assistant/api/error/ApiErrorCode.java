@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Errors produced by the HTTP layer itself; the business errors (AST-001 and AST-002) come from the domain.
+ * Errors produced by the HTTP layer itself; the business errors (AST-001 to AST-003) come from the domain.
  */
 @Getter
 @RequiredArgsConstructor

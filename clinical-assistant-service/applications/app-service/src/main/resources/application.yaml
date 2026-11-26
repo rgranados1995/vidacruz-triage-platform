@@ -9,8 +9,22 @@ spring:
     add-properties: false
   reactor:
     context-propagation: auto
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      timeout: 2s
 
 adapters:
+  kafka:
+    # Events of the triage that build the state of the emergency room (RF-04 part B)
+    triage-events:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      topic: ${TRIAGE_EVENTS_TOPIC}
+      group-id: ${URGENCY_CONSUMER_GROUP}
+  urgency-state:
+    # At least the retention of the topic: a late older event can never bring a discharged patient back
+    discharged-retention: 7d
   claude:
     # Blank: the service starts and the questions that need the model are answered with 503 (degraded mode)
     api-key: ${ANTHROPIC_API_KEY}
@@ -63,6 +77,7 @@ errors:
 
 routes:
   consultation: /asistente/consulta
+  urgency-state: /asistente/estado-urgencias
 
 security:
   api-key: ${ASSISTANT_API_KEY}

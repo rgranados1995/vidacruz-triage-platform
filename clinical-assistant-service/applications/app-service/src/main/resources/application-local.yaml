@@ -1,6 +1,12 @@
 server:
   port: 8082
 
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 adapters:
   claude:
     # Local runs read the key of the developer from the environment; without it the assistant runs degraded
@@ -8,6 +14,11 @@ adapters:
     model: claude-opus-5-5
     effort: medium
     timeout: 15s
+  kafka:
+    triage-events:
+      bootstrap-servers: localhost:29092
+      topic: triaje.eventos
+      group-id: clinical-assistant-urgency-state
   protocol-corpus:
     top-k: 3
     similarity-threshold: 0.50

@@ -21,6 +21,8 @@ public final class ApiErrors {
     private static final String MALFORMED_BODY = "El cuerpo debe ser un JSON válido";
     private static final String UNAVAILABLE_DETAIL = "Intente de nuevo en unos minutos; mientras tanto, consulte los "
             + "protocolos clínicos directamente";
+    private static final String STATE_UNAVAILABLE_DETAIL = "Intente de nuevo en unos segundos; el registro de "
+            + "pacientes del triaje no se ve afectado";
 
     /** Maps a failure to its error body; the most specific types come first. */
     public static ApiError from(Throwable error, String path) {
@@ -50,6 +52,9 @@ public final class ApiErrors {
                     List.of(new ApiFieldError(QUESTION_FIELD, business.getDetail())));
             case ASSISTANT_UNAVAILABLE -> new ApiError(ApiError.DEFAULT_TYPE, error.getMessage(),
                     HttpStatus.SERVICE_UNAVAILABLE.value(), UNAVAILABLE_DETAIL, path, error.getCode(), List.of());
+            case URGENCY_STATE_UNAVAILABLE -> new ApiError(ApiError.DEFAULT_TYPE, error.getMessage(),
+                    HttpStatus.SERVICE_UNAVAILABLE.value(), STATE_UNAVAILABLE_DETAIL, path, error.getCode(),
+                    List.of());
         };
     }
 

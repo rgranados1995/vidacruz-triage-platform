@@ -1,6 +1,8 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
+	implementation project(':redis')
+	implementation project(':kafka-consumer')
 	implementation project(':claude-llm')
 	implementation project(':protocol-corpus')
 	implementation project(':reactive-web')
@@ -16,6 +18,10 @@ dependencies {
     testImplementation 'com.tngtech.archunit:archunit:1.4.1'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation "org.wiremock:wiremock-standalone:${wiremockVersion}"
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.apache.kafka:kafka-clients'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
 }
 
 test {

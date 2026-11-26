@@ -3,12 +3,16 @@ package com.vidacruz.assistant;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.springframework.test.context.DynamicPropertyRegistry;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.kafka.KafkaContainer;
 
 import java.io.File;
+import java.util.UUID;
 
 /**
  * Environment of the integration tests: the same variables the deployment provides, so the tests read the real
- * application.yaml. The embedding model is the real one (downloaded by the build); the Anthropic API is faked.
+ * application.yaml. The embedding model, Kafka and Redis are real (one container of each for the whole run); the
+ * Anthropic API is faked.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class TestEnvironment {
@@ -20,6 +24,20 @@ final class TestEnvironment {
     static final String LOG_LEVEL = "LOG_LEVEL=INFO";
 
     static final String API_KEY = "integration-test-assistant-key";
+    static final String EVENTS_TOPIC = "triaje.eventos";
+
+    private static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.1");
+    private static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4.12-alpine")
+            .withExposedPorts(6379);
+
+    static {
+        KAFKA.start();
+        REDIS.start();
+    }
+
+    static String kafkaBootstrapServers() {
+        return KAFKA.getBootstrapServers();
+    }
 
     static void register(DynamicPropertyRegistry registry, String anthropicKey, String anthropicBaseUrl) {
         var model = new File(System.getProperty("embedding.model.dir"));
@@ -37,5 +55,12 @@ final class TestEnvironment {
         registry.add("RAG_SIMILARITY_THRESHOLD", () -> "0.50");
         registry.add("EMBEDDING_MODEL_URI", () -> new File(model, "model.onnx").toURI().toString());
         registry.add("EMBEDDING_TOKENIZER_URI", () -> new File(model, "tokenizer.json").toURI().toString());
+        registry.add("KAFKA_BOOTSTRAP_SERVERS", KAFKA::getBootstrapServers);
+        registry.add("TRIAGE_EVENTS_TOPIC", () -> EVENTS_TOPIC);
+        // A group per application context: each context of the run reads every partition on its own
+        var group = "assistant-test-" + UUID.randomUUID();
+        registry.add("URGENCY_CONSUMER_GROUP", () -> group);
+        registry.add("REDIS_HOST", REDIS::getHost);
+        registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
     }
 }
