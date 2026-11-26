@@ -47,7 +47,7 @@ No necesitas instalar Java, Gradle, PostgreSQL ni Kafka: todo se compila y corre
 Abre una terminal (en Windows, **PowerShell**) y escribe:
 
 ```powershell
-git clone <URL-del-repositorio> vidacruz-triage-platform
+git clone https://github.com/rgranados1995/vidacruz-triage-platform.git
 cd vidacruz-triage-platform
 ```
 
@@ -124,6 +124,10 @@ local-dev-api-key-0001
 3. Abre cualquier operación (por ejemplo `POST /triage/pacientes`), pulsa **Try it out**, pega el JSON de un paciente
    de la [sección 7](#7-datos-de-prueba-pacientes-e1-a-e6) y pulsa **Execute**.
 4. Abajo ves la respuesta. Copia el `id` del paciente para las siguientes operaciones.
+
+### Opción C — Postman (todo listo para importar)
+
+En Postman: **Import** → elige el archivo [`docs/postman/VidaCruz.postman_collection.json`](../docs/postman/VidaCruz.postman_collection.json) de la raíz del repositorio. Trae las pruebas de los dos servicios en orden (carpetas 0 a 3), con las llaves ya puestas, los `id` guardados solos entre una petición y otra y una verificación en cada respuesta. Puedes ir petición por petición con **Send** o correr todo con **Run collection** (desmarca la carpeta 9, que es el stream en vivo y no termina nunca). La carpeta 2 necesita el modo demo y espera sola el minuto del escalamiento.
 
 ### Opción B — Consola con curl
 

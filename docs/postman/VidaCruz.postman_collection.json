@@ -1,0 +1,1185 @@
+{
+  "info": {
+    "name": "VidaCruz · Triage y Asistente Clínico (local)",
+    "description": "Pruebas de los dos microservicios en local. Antes, levanta todo en modo demo desde la raíz del repositorio:\n\ndocker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build\n\nCorre las carpetas en orden (0, 1, 2, 3) o toda la colección con Run collection. Las llaves son las de desarrollo local del docker-compose.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "triageUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "asistenteUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "triageApiKey",
+      "value": "local-dev-api-key-0001"
+    },
+    {
+      "key": "asistenteApiKey",
+      "value": "local-dev-assistant-key-0001"
+    },
+    {
+      "key": "pacienteCriticoId",
+      "value": ""
+    },
+    {
+      "key": "pacienteE4Id",
+      "value": ""
+    },
+    {
+      "key": "pacienteE5Id",
+      "value": ""
+    },
+    {
+      "key": "criticoRegistradoEn",
+      "value": ""
+    },
+    {
+      "key": "alertaId",
+      "value": ""
+    },
+    {
+      "key": "reporteDesde",
+      "value": ""
+    },
+    {
+      "key": "reporteHasta",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · ¿Está vivo?",
+      "description": "Sin API key. Las dos deben responder {\"status\":\"UP\"}.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Triaje listo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/health/readiness",
+            "description": "Readiness del triaje."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asistente listo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{asistenteUrl}}/health/readiness",
+            "description": "Readiness del asistente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 · Triaje: registro, estados y reporte",
+      "description": "Registra los pacientes E1 a E6 del enunciado y recorre el flujo de estados. Los ids se guardan solos en las variables de la colección.",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "X-API-Key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{triageApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Registrar E1 · CRITICO (dolor torácico)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: CRITICO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Ana María Pérez\",\n  \"edad\": 54,\n  \"frecuenciaCardiaca\": 130,\n  \"presionSistolica\": 180,\n  \"presionDiastolica\": 110,\n  \"spo2\": 97,\n  \"temperatura\": 36.8,\n  \"dolor\": 8,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Dolor torácico\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel CRITICO\", () => pm.expect(body.nivel).to.eql(\"CRITICO\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));",
+                  "pm.collectionVariables.set(\"pacienteCriticoId\", body.id);",
+                  "pm.collectionVariables.set(\"criticoRegistradoEn\", Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar E2 · URGENTE",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: URGENTE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Carlos Gómez Ruiz\",\n  \"edad\": 61,\n  \"frecuenciaCardiaca\": 95,\n  \"presionSistolica\": 150,\n  \"presionDiastolica\": 95,\n  \"spo2\": 91,\n  \"temperatura\": 37.0,\n  \"dolor\": 4,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Dificultad para respirar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel URGENTE\", () => pm.expect(body.nivel).to.eql(\"URGENTE\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar E3 · URGENTE_2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: URGENTE_2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Lucía Fernández\",\n  \"edad\": 29,\n  \"frecuenciaCardiaca\": 88,\n  \"presionSistolica\": 130,\n  \"presionDiastolica\": 85,\n  \"spo2\": 98,\n  \"temperatura\": 38.2,\n  \"dolor\": 6,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Fiebre\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel URGENTE_2\", () => pm.expect(body.nivel).to.eql(\"URGENTE_2\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar E4 · NO_URGENTE",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: NO_URGENTE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Jorge Ramírez\",\n  \"edad\": 35,\n  \"frecuenciaCardiaca\": 72,\n  \"presionSistolica\": 120,\n  \"presionDiastolica\": 80,\n  \"spo2\": 99,\n  \"temperatura\": 36.5,\n  \"dolor\": 2,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Herida por cortar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel NO_URGENTE\", () => pm.expect(body.nivel).to.eql(\"NO_URGENTE\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));",
+                  "pm.collectionVariables.set(\"pacienteE4Id\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar E5 · NO_URGENTE_2 (recetario)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: NO_URGENTE_2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Marta Silva\",\n  \"edad\": 70,\n  \"frecuenciaCardiaca\": 70,\n  \"presionSistolica\": 115,\n  \"presionDiastolica\": 75,\n  \"spo2\": 99,\n  \"temperatura\": 36.4,\n  \"dolor\": 0,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Renovación de recetario\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel NO_URGENTE_2\", () => pm.expect(body.nivel).to.eql(\"NO_URGENTE_2\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));",
+                  "pm.collectionVariables.set(\"pacienteE5Id\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar E6 · CRITICO (inconsciente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Paciente del enunciado. Nivel esperado: CRITICO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Paciente sin identificar\",\n  \"edad\": 45,\n  \"frecuenciaCardiaca\": 35,\n  \"presionSistolica\": 80,\n  \"presionDiastolica\": 50,\n  \"spo2\": 85,\n  \"temperatura\": 35.9,\n  \"dolor\": 0,\n  \"gcs\": 6,\n  \"quejaPrincipal\": \"Inconsciente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nivel CRITICO\", () => pm.expect(body.nivel).to.eql(\"CRITICO\"));",
+                  "pm.test(\"Queda REGISTRADO\", () => pm.expect(body.estado).to.eql(\"REGISTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar con datos inválidos → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Nombre corto, edad 130, FC 300 y diastólica mayor que la sistólica: 400 con los 4 errores a la vez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Al\",\n  \"edad\": 130,\n  \"frecuenciaCardiaca\": 300,\n  \"presionSistolica\": 120,\n  \"presionDiastolica\": 130,\n  \"spo2\": 99,\n  \"temperatura\": 36.5,\n  \"dolor\": 2,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Control\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Código TRG-001\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-001\"));",
+                  "pm.test(\"Lista los 4 campos inválidos\", () => pm.expect(pm.response.json().errores.map(e => e.campo)).to.have.members([\"nombreCompleto\", \"edad\", \"frecuenciaCardiaca\", \"presionDiastolica\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar sin API key → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes",
+            "description": "Sin el header X-API-Key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreCompleto\": \"Jorge Ramírez\",\n  \"edad\": 35,\n  \"frecuenciaCardiaca\": 72,\n  \"presionSistolica\": 120,\n  \"presionDiastolica\": 80,\n  \"spo2\": 99,\n  \"temperatura\": 36.5,\n  \"dolor\": 2,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Herida por cortar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Código TRG-005\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-005\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar E4",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteE4Id}}",
+            "description": "Detalle completo, si está escalado y cuánto lleva en su estado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Sigue REGISTRADO y sin escalar\", () => { pm.expect(body.estado).to.eql(\"REGISTRADO\"); pm.expect(body.escalado).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E4 → EN_CONSULTA",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteE4Id}}/estado",
+            "description": "REGISTRADO → EN_CONSULTA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_CONSULTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado EN_CONSULTA\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_CONSULTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E4 → ALTA",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteE4Id}}/estado",
+            "description": "EN_CONSULTA → ALTA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado ALTA\", () => pm.expect(pm.response.json().estado).to.eql(\"ALTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E4 → EN_CONSULTA otra vez → 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteE4Id}}/estado",
+            "description": "ALTA → EN_CONSULTA no está permitido.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_CONSULTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Código TRG-003\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-003\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E5 → ALTA directa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteE5Id}}/estado",
+            "description": "REGISTRADO → ALTA sin pasar por consulta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ALTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado ALTA\", () => pm.expect(pm.response.json().estado).to.eql(\"ALTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar un paciente que no existe → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/pacientes/00000000-0000-0000-0000-000000000000",
+            "description": "Id que no existe."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Código TRG-002\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-002\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte de operación (últimas horas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/reportes/operacion?desde={{reporteDesde}}&hasta={{reporteHasta}}",
+            "description": "Por hora: registrados, conteo por nivel, atendidos, espera promedio y p95. El script calcula el rango en UTC: desde 2 horas antes de la hora actual hasta 1 hora después."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const start = new Date(); start.setUTCMinutes(0, 0, 0); start.setUTCHours(start.getUTCHours() - 2);",
+                  "const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set(\"reporteDesde\", start.toISOString().replace(\".000Z\", \"Z\"));",
+                  "pm.collectionVariables.set(\"reporteHasta\", end.toISOString().replace(\".000Z\", \"Z\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Trae horas y resumen\", () => { pm.expect(body.horas).to.be.an(\"array\").that.is.not.empty; pm.expect(body.resumen.totalRegistrados).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte con rango al revés → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/reportes/operacion?desde=2026-11-26T23:00:00Z&hasta=2026-11-26T21:00:00Z",
+            "description": "desde posterior a hasta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Código TRG-007\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-007\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 · Escalamiento y alertas (modo demo)",
+      "description": "Necesita el modo demo (SLA de CRITICO en 1 minuto). La primera petición espera sola hasta que pasen 70 segundos desde que se registró E1.",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "X-API-Key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{triageApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "E1 quedó escalado (espera ~70 s)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteCriticoId}}",
+            "description": "Espera a que el monitor de SLA escale a E1 (SLA de 1 minuto en modo demo, monitor cada 5 segundos)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const registered = Number(pm.collectionVariables.get(\"criticoRegistradoEn\") || 0);",
+                  "const wait = Math.max(0, 70000 - (Date.now() - registered));",
+                  "console.log(\"Esperando \" + Math.round(wait / 1000) + \" s a que el monitor de SLA escale a E1...\");",
+                  "setTimeout(() => {}, wait);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Escalado y todavía REGISTRADO\", () => { pm.expect(body.escalado).to.eql(true); pm.expect(body.estado).to.eql(\"REGISTRADO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alertas activas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/alertas",
+            "description": "Busca la alerta de E1 y guarda su id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const alert = pm.response.json().find(a => a.pacienteId === pm.collectionVariables.get(\"pacienteCriticoId\"));",
+                  "pm.test(\"Hay una alerta PENDIENTE para E1\", () => { pm.expect(alert).to.exist; pm.expect(alert.estado).to.eql(\"PENDIENTE\"); });",
+                  "if (alert) { pm.collectionVariables.set(\"alertaId\", alert.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reconocer la alerta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/alertas/{{alertaId}}/reconocimiento",
+            "description": "Un médico toma la alerta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsable\": \"Dra. Rojas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Queda RECONOCIDA por la Dra. Rojas\", () => { pm.expect(body.estado).to.eql(\"RECONOCIDA\"); pm.expect(body.reconocidaPor).to.eql(\"Dra. Rojas\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reconocerla otra vez → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/alertas/{{alertaId}}/reconocimiento",
+            "description": "Ya está reconocida.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsable\": \"Dra. Rojas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Código TRG-009\", () => pm.expect(pm.response.json().codigo).to.eql(\"TRG-009\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E1 → EN_CONSULTA (resuelve la alerta)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/pacientes/{{pacienteCriticoId}}/estado",
+            "description": "Al entrar a consulta, la alerta pasa sola a RESUELTA y sale de la lista de activas.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_CONSULTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado EN_CONSULTA\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_CONSULTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "La alerta de E1 ya no está activa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{triageUrl}}/triage/alertas",
+            "description": "Las alertas RESUELTAS no aparecen en la lista."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"La alerta de E1 ya no está\", () => pm.expect(pm.response.json().map(a => a.id)).to.not.include(Number(pm.collectionVariables.get(\"alertaId\"))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 · Asistente clínico",
+      "description": "Consultas a los protocolos y estado de urgencias. Sin ANTHROPIC_API_KEY, las preguntas con protocolo responden 503 (modo degradado) y la de diabetes igual responde el aviso.",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "X-API-Key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{asistenteApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Crisis hipertensiva → PROTO-001",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{asistenteUrl}}/asistente/consulta",
+            "description": "Consulta 1 del enunciado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"¿Cuáles son las medidas iniciales ante una crisis hipertensiva?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 con fuentes, o 503 si no hay llave de IA\", () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test(\"Cita PROTO-001\", () => pm.expect(body.fuentes.map(f => f.protocolo)).to.include(\"PROTO-001\"));",
+                  "} else {",
+                  "  pm.test(\"Modo degradado: AST-002 y Retry-After\", () => { pm.expect(body.codigo).to.eql(\"AST-002\"); pm.expect(pm.response.headers.get(\"Retry-After\")).to.eql(\"30\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Primer antibiótico en sepsis → PROTO-002",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{asistenteUrl}}/asistente/consulta",
+            "description": "Consulta 2 del enunciado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"¿Cuándo se administra el primer antibiótico en sepsis?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 con fuentes, o 503 si no hay llave de IA\", () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test(\"Cita PROTO-002\", () => pm.expect(body.fuentes.map(f => f.protocolo)).to.include(\"PROTO-002\"));",
+                  "} else {",
+                  "  pm.test(\"Modo degradado: AST-002 y Retry-After\", () => { pm.expect(body.codigo).to.eql(\"AST-002\"); pm.expect(pm.response.headers.get(\"Retry-After\")).to.eql(\"30\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deshidratación severa → PROTO-003",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{asistenteUrl}}/asistente/consulta",
+            "description": "Pregunta sobre el tercer protocolo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"¿Cómo se rehidrata a un niño con deshidratación severa?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 con fuentes, o 503 si no hay llave de IA\", () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test(\"Cita PROTO-003\", () => pm.expect(body.fuentes.map(f => f.protocolo)).to.include(\"PROTO-003\"));",
+                  "} else {",
+                  "  pm.test(\"Modo degradado: AST-002 y Retry-After\", () => { pm.expect(body.codigo).to.eql(\"AST-002\"); pm.expect(pm.response.headers.get(\"Retry-After\")).to.eql(\"30\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Diabetes tipo 2 → no existe protocolo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{asistenteUrl}}/asistente/consulta",
+            "description": "Consulta 3 del enunciado: ningún protocolo la responde, así que ni se llama a la IA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"¿Cuál es el tratamiento de primera línea para la diabetes tipo 2?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Solo el aviso y sin fuentes\", () => { pm.expect(body.respuesta).to.eql(\"No existe un protocolo disponible en el corpus oficial para esta pregunta.\"); pm.expect(body.fuentes).to.be.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pregunta inválida → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{asistenteUrl}}/asistente/consulta",
+            "description": "Una pregunta de 1 carácter.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pregunta\": \"?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Código AST-001\", () => pm.expect(pm.response.json().codigo).to.eql(\"AST-001\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado de urgencias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{asistenteUrl}}/asistente/estado-urgencias",
+            "description": "Pacientes activos (no en ALTA) por nivel, armado desde los eventos de Kafka."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Trae los 5 niveles\", () => pm.expect(Object.keys(body.porNivel)).to.have.members([\"CRITICO\", \"URGENTE\", \"URGENTE_2\", \"NO_URGENTE\", \"NO_URGENTE_2\"]));",
+                  "pm.test(\"Hay pacientes activos\", () => pm.expect(body.totalActivos).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado de urgencias sin API key → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{asistenteUrl}}/asistente/estado-urgencias",
+            "description": "Sin el header X-API-Key.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Código AST-005\", () => pm.expect(pm.response.json().codigo).to.eql(\"AST-005\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9 · A mano: alertas en vivo (no la corras en el Runner)",
+      "description": "El stream no termina nunca: ábrelo con Send y detenlo con Cancel. Desmárcala si corres toda la colección.",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          {
+            "key": "key",
+            "value": "X-API-Key",
+            "type": "string"
+          },
+          {
+            "key": "value",
+            "value": "{{triageApiKey}}",
+            "type": "string"
+          },
+          {
+            "key": "in",
+            "value": "header",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Alertas en vivo (stream SSE, ábrelo a mano)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": "{{triageUrl}}/triage/alertas/stream",
+            "description": "Server-Sent Events: Postman muestra cada evento a medida que llega (alertas activas al conectar, luego cada cambio, y un ':latido' cada 15 s). Detenlo con Cancel. No lo corras en el Runner: el stream no termina nunca."
+          },
+          "event": []
+        }
+      ]
+    }
+  ]
+}
