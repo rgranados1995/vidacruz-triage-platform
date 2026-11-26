@@ -90,6 +90,7 @@ services:
       OUTBOX_POLL_INTERVAL: 500ms
       OUTBOX_BATCH_SIZE: 100
       OUTBOX_LEASE: 30s
+      REPORT_MAX_RANGE: 31d
     ports:
       - "8081:8081"
     depends_on:

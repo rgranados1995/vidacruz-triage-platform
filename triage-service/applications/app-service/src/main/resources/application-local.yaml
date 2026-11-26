@@ -32,6 +32,9 @@ outbox:
   batch-size: 100
   lease: 30s
 
+report:
+  max-range: 31d
+
 triage:
   sla-minutes:
     CRITICAL: 5

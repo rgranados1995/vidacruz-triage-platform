@@ -13,7 +13,8 @@ public enum BusinessError {
 
     INVALID_PATIENT_DATA("TRG-001", "Los datos del paciente no son válidos"),
     PATIENT_NOT_FOUND("TRG-002", "No existe un paciente con el id indicado"),
-    INVALID_STATUS_TRANSITION("TRG-003", "Transición de estado no permitida");
+    INVALID_STATUS_TRANSITION("TRG-003", "Transición de estado no permitida"),
+    INVALID_REPORT_PERIOD("TRG-007", "Rango de fechas no válido");
 
     private final String code;
     private final String message;

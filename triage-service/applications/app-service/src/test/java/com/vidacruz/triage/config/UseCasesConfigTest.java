@@ -4,10 +4,13 @@ import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
 import com.vidacruz.triage.model.outbox.gateways.EventPublisher;
 import com.vidacruz.triage.model.outbox.gateways.OutboxRepository;
 import com.vidacruz.triage.model.patient.gateways.PatientRepository;
+import com.vidacruz.triage.model.report.ReportPolicy;
+import com.vidacruz.triage.model.report.gateways.OperationReportRepository;
 import com.vidacruz.triage.model.triage.SlaPolicy;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.usecase.changepatientstatus.ChangePatientStatusUseCase;
 import com.vidacruz.triage.usecase.escalateoverduesla.EscalateOverdueSlaUseCase;
+import com.vidacruz.triage.usecase.getoperationreport.GetOperationReportUseCase;
 import com.vidacruz.triage.usecase.getpatient.GetPatientUseCase;
 import com.vidacruz.triage.usecase.publishpendingevents.PublishPendingEventsUseCase;
 import com.vidacruz.triage.usecase.registerpatient.RegisterPatientUseCase;
@@ -30,6 +33,7 @@ class UseCasesConfigTest {
             .withBean(PatientRepository.class, () -> mock(PatientRepository.class))
             .withBean(OutboxRepository.class, () -> mock(OutboxRepository.class))
             .withBean(EventPublisher.class, () -> mock(EventPublisher.class))
+            .withBean(OperationReportRepository.class, () -> mock(OperationReportRepository.class))
             .withPropertyValues(
                     "triage.sla-minutes.CRITICAL=5",
                     "triage.sla-minutes.URGENT=10",
@@ -39,7 +43,8 @@ class UseCasesConfigTest {
                     "triage.administrative-complaints=documentos,renovación de recetario",
                     "outbox.batch-size=50",
                     "sla-monitor.batch-size=20",
-                    "outbox.lease=30s");
+                    "outbox.lease=30s",
+                    "report.max-range=31d");
 
     @Test
     void shouldRegisterEveryUseCaseOfTheDomainAsABean() {
@@ -49,7 +54,14 @@ class UseCasesConfigTest {
                 .hasSingleBean(ChangePatientStatusUseCase.class)
                 .hasSingleBean(GetPatientUseCase.class)
                 .hasSingleBean(PublishPendingEventsUseCase.class)
-                .hasSingleBean(EscalateOverdueSlaUseCase.class));
+                .hasSingleBean(EscalateOverdueSlaUseCase.class)
+                .hasSingleBean(GetOperationReportUseCase.class));
+    }
+
+    @Test
+    void shouldTakeTheMaximumReportRangeFromTheConfiguration() {
+        runner.run(context -> assertThat(context.getBean(ReportPolicy.class))
+                .isEqualTo(new ReportPolicy(Duration.ofDays(31))));
     }
 
     @Test

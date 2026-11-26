@@ -51,6 +51,8 @@ class SlaMonitorJobTest {
         job.start();
 
         verify(escalateOverdueSla, timeout(2000).atLeast(3)).escalateOverdue();
-        assertThat(output).doesNotContain("Patients escalated");
+        // Only this test's rounds escalate zero: a round of another test that was in flight when it stopped may
+        // still log its own escalations into this output
+        assertThat(output).doesNotContain("escalated=\"0\"");
     }
 }

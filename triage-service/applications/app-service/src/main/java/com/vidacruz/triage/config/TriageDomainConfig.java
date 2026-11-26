@@ -1,6 +1,7 @@
 package com.vidacruz.triage.config;
 
 import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
+import com.vidacruz.triage.model.report.ReportPolicy;
 import com.vidacruz.triage.model.triage.AdministrativeComplaints;
 import com.vidacruz.triage.model.triage.SlaMonitorPolicy;
 import com.vidacruz.triage.model.triage.SlaPolicy;
@@ -18,7 +19,8 @@ import java.time.temporal.ChronoUnit;
  * Domain services used by the use cases. The domain has no framework annotations, so they are created here.
  */
 @Configuration
-@EnableConfigurationProperties({TriageProperties.class, OutboxProperties.class, SlaMonitorProperties.class})
+@EnableConfigurationProperties({TriageProperties.class, OutboxProperties.class, SlaMonitorProperties.class,
+    ReportProperties.class})
 public class TriageDomainConfig {
 
     /**
@@ -48,6 +50,11 @@ public class TriageDomainConfig {
     @Bean
     public SlaMonitorPolicy slaMonitorPolicy(SlaMonitorProperties properties) {
         return new SlaMonitorPolicy(properties.batchSize());
+    }
+
+    @Bean
+    public ReportPolicy reportPolicy(ReportProperties properties) {
+        return new ReportPolicy(properties.maxRange());
     }
 
     @Bean

@@ -61,8 +61,13 @@ triage:
     NON_URGENT_2: ${SLA_MINUTES_NON_URGENT_2}
   administrative-complaints: ${ADMINISTRATIVE_COMPLAINTS}
 
+report:
+  # Longest range of the operation report: bounds the cost of the query and the rows of the answer (one per hour)
+  max-range: ${REPORT_MAX_RANGE}
+
 routes:
   patients: /triage/pacientes
+  operation-report: /triage/reportes/operacion
 
 security:
   api-key: ${API_KEY}

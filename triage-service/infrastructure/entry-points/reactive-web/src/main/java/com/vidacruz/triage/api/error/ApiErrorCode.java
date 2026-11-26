@@ -4,7 +4,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Errors produced by the HTTP layer itself; the business errors (TRG-001 to TRG-003) come from the domain.
+ * Errors produced by the HTTP layer itself; the business errors (TRG-001 to TRG-003 and TRG-007) come from the
+ * domain.
  */
 @Getter
 @RequiredArgsConstructor
