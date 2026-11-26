@@ -55,6 +55,7 @@ class MedicalAlertAcceptanceIntegrationTest {
 
     @Test
     void shouldStreamTheAlertOfAnOverduePatientUntilItIsResolved() {
+        var acknowledgedBefore = PrometheusScrape.counter(client, "triage_alerts_acknowledged_total", "CRITICAL");
         var patient = overduePatient();
         var alertId = new AtomicLong();
         var stream = client.mutate().responseTimeout(Duration.ofSeconds(30)).build()
@@ -94,9 +95,11 @@ class MedicalAlertAcceptanceIntegrationTest {
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("TRG-009");
-        // The applied escalation and the acknowledgement were counted; the rejected second one was not
-        assertThat(PrometheusScrape.counter(client, "triage_patients_escalated_total", "CRITICAL")).isPositive();
-        assertThat(PrometheusScrape.counter(client, "triage_alerts_acknowledged_total", "CRITICAL")).isPositive();
+        // The acknowledgement was counted once: the rejected second one was not. The escalation counter is not
+        // checked here: the SLA monitor of any other test context sharing this database may escalate the patient
+        // first (it is covered by the tests of the use case and of the metrics adapter)
+        assertThat(PrometheusScrape.counter(client, "triage_alerts_acknowledged_total", "CRITICAL"))
+                .isEqualTo(acknowledgedBefore + 1);
     }
 
     @Test

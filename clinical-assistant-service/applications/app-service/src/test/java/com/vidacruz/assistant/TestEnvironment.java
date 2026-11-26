@@ -27,7 +27,10 @@ final class TestEnvironment {
     static final String EVENTS_TOPIC = "triaje.eventos";
 
     private static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.1");
+    private static final String REDIS_PASSWORD = "integration-test-redis-password";
+    /** Same as the deployment: Redis only answers after AUTH. */
     private static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4.12-alpine")
+            .withCommand("redis-server", "--requirepass", REDIS_PASSWORD)
             .withExposedPorts(6379);
 
     static {
@@ -62,5 +65,6 @@ final class TestEnvironment {
         registry.add("URGENCY_CONSUMER_GROUP", () -> group);
         registry.add("REDIS_HOST", REDIS::getHost);
         registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
+        registry.add("REDIS_PASSWORD", () -> REDIS_PASSWORD);
     }
 }

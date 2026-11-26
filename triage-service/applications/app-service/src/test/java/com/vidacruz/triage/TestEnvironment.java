@@ -55,6 +55,7 @@ final class TestEnvironment {
         registry.add("DB_HOST", POSTGRES::getHost);
         registry.add("DB_PORT", () -> POSTGRES.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT));
         registry.add("DB_NAME", POSTGRES::getDatabaseName);
+        registry.add("DB_SSL_MODE", () -> "disable");
         registry.add("DB_USERNAME", POSTGRES::getUsername);
         registry.add("DB_PASSWORD", POSTGRES::getPassword);
         registry.add("DB_POOL_INITIAL_SIZE", () -> "1");

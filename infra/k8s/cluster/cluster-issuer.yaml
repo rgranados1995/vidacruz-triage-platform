@@ -1,0 +1,19 @@
+# Certificates of Let's Encrypt, validated over HTTP (HTTP-01) with a route that cert-manager attaches to the HTTP
+# listener of the Gateway while the challenge lasts.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: vidacruz
+                namespace: vidacruz-edge
+                kind: Gateway
+                sectionName: http

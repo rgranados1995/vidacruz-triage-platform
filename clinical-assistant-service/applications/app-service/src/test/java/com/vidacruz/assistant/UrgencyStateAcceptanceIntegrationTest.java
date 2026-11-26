@@ -23,6 +23,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.StandardCharsets;
@@ -103,11 +104,10 @@ class UrgencyStateAcceptanceIntegrationTest {
         var after = await(state -> true);
         assertThat(count(after, TriageLevel.NON_URGENT)).isEqualTo(count(before, TriageLevel.NON_URGENT));
         assertThat(after.totalActive()).isEqualTo(before.totalActive() + 2);
-        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "applied")).isPositive();
-        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "ignored_older"))
-                .isPositive();
-        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "skipped"))
-                .isPositive();
+        // The late event may still be on its way when the state already matches: wait for each result to be counted
+        awaitCounted("applied");
+        awaitCounted("ignored_older");
+        awaitCounted("skipped");
         // Metrics of the Kafka client: the lag of the consumer
         assertThat(PrometheusScrape.value(client, "kafka_consumer_fetch_manager_records_lag_max", "application",
                 "clinical-assistant-service")).isNotNegative();
@@ -152,6 +152,19 @@ class UrgencyStateAcceptanceIntegrationTest {
         StepVerifier.create(Mono.fromCallable(output::getOut)
                         .filter(logged -> logged.lines().anyMatch(line -> line.contains("Triage event skipped")
                                 && line.contains(traceId)))
+                        .repeatWhenEmpty(rounds -> rounds.delayElements(Duration.ofMillis(200))))
+                .expectNextCount(1)
+                .expectComplete()
+                .verify(WAIT);
+    }
+
+    /** Polls the Prometheus endpoint until the consumer has counted at least one event with this result. */
+    private void awaitCounted(String result) {
+        StepVerifier.create(Mono.fromCallable(() -> PrometheusScrape.value(client, "assistant_urgency_events_total",
+                                "result", result))
+                        // The scrape waits for the HTTP answer: never on a parallel thread (BlockHound)
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .filter(count -> count > 0)
                         .repeatWhenEmpty(rounds -> rounds.delayElements(Duration.ofMillis(200))))
                 .expectNextCount(1)
                 .expectComplete()

@@ -1,0 +1,6 @@
+# Cluster-wide resources, applied first (they have no namespace). They need the CRDs of cert-manager, installed by
+# infra/azure/deploy.ps1.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cluster-issuer.yaml

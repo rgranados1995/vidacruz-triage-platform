@@ -1,0 +1,28 @@
+# Every ${VAR} of application.yaml that is not secret (the secret ones are in secret.example.yaml; REDIS_PASSWORD
+# comes from the secret of Redis, shared with infra/k8s/redis.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clinical-assistant-service-config
+data:
+  SERVER_PORT: "8082"
+  LOG_LEVEL: INFO
+  # No span exporter in Azure yet: sampling everything only costs the trace ids in logs
+  TRACING_SAMPLING_PROBABILITY: "1.0"
+  # Swagger stays on for the evaluation; it still needs the API key to call the API
+  API_DOCS_ENABLED: "true"
+  LLM_MODEL: claude-opus-5-5
+  LLM_EFFORT: medium
+  LLM_TIMEOUT: 15s
+  LLM_RETRY_MAX_ATTEMPTS: "2"
+  LLM_RETRY_BACKOFF: 500ms
+  RAG_TOP_K: "3"
+  RAG_SIMILARITY_THRESHOLD: "0.50"
+  # Files baked into the image, pinned by commit and SHA-256 (deployment/Dockerfile)
+  EMBEDDING_MODEL_URI: file:/opt/models/model.onnx
+  EMBEDDING_TOKENIZER_URI: file:/opt/models/tokenizer.json
+  KAFKA_BOOTSTRAP_SERVERS: kafka-0.kafka:9092
+  TRIAGE_EVENTS_TOPIC: triaje.eventos
+  URGENCY_CONSUMER_GROUP: clinical-assistant-urgency-state
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"

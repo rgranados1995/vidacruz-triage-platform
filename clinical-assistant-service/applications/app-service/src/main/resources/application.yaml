@@ -1,6 +1,8 @@
 server:
   port: ${SERVER_PORT}
   shutdown: graceful
+  # Behind the ingress: X-Forwarded-Proto/Host/Prefix build the links of Swagger (only the ingress reaches the pods)
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -13,6 +15,8 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      # Redis runs with requirepass; the password comes from the secret of the deployment
+      password: ${REDIS_PASSWORD}
       timeout: 2s
 
 adapters:

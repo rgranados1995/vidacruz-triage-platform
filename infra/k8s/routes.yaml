@@ -1,0 +1,193 @@
+# Public routes over HTTPS on the Gateway of vidacruz-edge. Only the APIs and their Swagger are published: /health
+# and /prometheus stay inside the cluster. Envoy streams the responses, so the alert stream (SSE) reaches the client
+# event by event; the heartbeat keeps it from being idle.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vidacruz-api
+spec:
+  parentRefs:
+    - name: vidacruz
+      namespace: vidacruz-edge
+      sectionName: https
+  hostnames: [__PUBLIC_HOST__]
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /triage
+      backendRefs:
+        - name: triage-service
+          port: 8081
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /asistente
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082
+---
+# Swagger of the triage at /docs/triage/swagger-ui.html. The prefix is removed before reaching the service and
+# X-Forwarded-Prefix lets springdoc build the links of the UI with it (server.forward-headers-strategy: framework).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vidacruz-docs-triage
+spec:
+  parentRefs:
+    - name: vidacruz
+      namespace: vidacruz-edge
+      sectionName: https
+  hostnames: [__PUBLIC_HOST__]
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/triage/swagger-ui
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /swagger-ui
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/triage
+      backendRefs:
+        - name: triage-service
+          port: 8081
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/triage/webjars
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /webjars
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/triage
+      backendRefs:
+        - name: triage-service
+          port: 8081
+    # The OpenAPI document itself goes without the prefix, so its server is the public host and "Try it out"
+    # calls /triage/... (the route of the API); the more specific Exact match wins over the PathPrefix below
+    - matches:
+        - path:
+            type: Exact
+            value: /docs/triage/v3/api-docs
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /v3/api-docs
+      backendRefs:
+        - name: triage-service
+          port: 8081
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/triage/v3/api-docs
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /v3/api-docs
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/triage
+      backendRefs:
+        - name: triage-service
+          port: 8081
+---
+# Swagger of the assistant at /docs/asistente/swagger-ui.html
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vidacruz-docs-assistant
+spec:
+  parentRefs:
+    - name: vidacruz
+      namespace: vidacruz-edge
+      sectionName: https
+  hostnames: [__PUBLIC_HOST__]
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/asistente/swagger-ui
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /swagger-ui
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/asistente
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/asistente/webjars
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /webjars
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/asistente
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082
+    # The OpenAPI document itself goes without the prefix, so its server is the public host and "Try it out"
+    # calls /asistente/... (the route of the API); the more specific Exact match wins over the PathPrefix below
+    - matches:
+        - path:
+            type: Exact
+            value: /docs/asistente/v3/api-docs
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /v3/api-docs
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs/asistente/v3/api-docs
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /v3/api-docs
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/asistente
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082

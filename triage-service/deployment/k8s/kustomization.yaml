@@ -1,0 +1,14 @@
+# Manifests of triage-service. The namespace, the image registry and the values of each environment are set by
+# infra/k8s/kustomization.yaml; the secret is created by infra/azure/deploy.ps1 (see secret.example.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/name: triage-service
+      app.kubernetes.io/part-of: vidacruz
+    includeSelectors: true
+resources:
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml

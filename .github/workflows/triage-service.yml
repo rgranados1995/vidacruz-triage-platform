@@ -1,0 +1,54 @@
+# CI of triage-service: build with every test (Testcontainers runs PostgreSQL and Kafka on the runner), coverage
+# rules of every module and the image of the deployment.
+name: triage-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - triage-service/**
+      - .github/workflows/triage-service.yml
+  pull_request:
+    paths:
+      - triage-service/**
+      - .github/workflows/triage-service.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triage-service-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: triage-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            triage-service/**/*.gradle
+            triage-service/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-service-test-reports
+          path: triage-service/**/build/reports/tests/
+          retention-days: 7
+
+      - name: Build the image
+        run: docker build --file deployment/Dockerfile --tag triage-service:${{ github.sha }} .

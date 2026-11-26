@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.time.Duration;
 
@@ -90,9 +91,13 @@ class OutboxRelayJobTest {
         when(publishPendingEvents.publishPending()).thenReturn(Mono.just(2L));
         job.start();
 
-        // Rounds never overlap: the second call only happens after the first round finished and logged
-        verify(publishPendingEvents, timeout(2000).atLeast(2)).publishPending();
-        assertThat(output).contains("Outbox relay round");
+        // The log line is written by the thread of the round, maybe after the mock was called: wait for it
+        StepVerifier.create(Mono.fromCallable(output::toString)
+                        .filter(logged -> logged.contains("Outbox relay round"))
+                        .repeatWhenEmpty(rounds -> rounds.delayElements(Duration.ofMillis(20))))
+                .expectNextCount(1)
+                .expectComplete()
+                .verify(Duration.ofSeconds(2));
     }
 
     @Test

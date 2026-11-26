@@ -1,0 +1,9 @@
+# Public entry of the platform: the Gateway (Gateway API, application routing add-on of AKS with managed Istio) in
+# a namespace of its own. Its Envoy pods are created by Istio, so the namespace enforces the baseline Pod Security
+# level and only warns about restricted; the services keep restricted in vidacruz.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vidacruz-edge
+resources:
+  - namespace.yaml
+  - gateway.yaml

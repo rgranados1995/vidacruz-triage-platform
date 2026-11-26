@@ -1,0 +1,54 @@
+# Gateway of the platform on the public IP that main.bicep creates with its Azure DNS name (__PUBLIC_HOST__).
+# cert-manager reads the annotation and issues the certificate of the HTTPS listener with Let's Encrypt.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: vidacruz
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  gatewayClassName: approuting-istio
+  infrastructure:
+    annotations:
+      service.beta.kubernetes.io/azure-pip-name: __INGRESS_IP_NAME__
+      service.beta.kubernetes.io/azure-load-balancer-resource-group: __RESOURCE_GROUP__
+  listeners:
+    # Only for the HTTP-01 challenge of Let's Encrypt and the redirection to HTTPS
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: __PUBLIC_HOST__
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: __PUBLIC_HOST__
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: vidacruz-tls
+      # The routes of the APIs live next to their services
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: vidacruz
+---
+# Everything that arrives over HTTP goes to HTTPS, except the challenge of Let's Encrypt (its route is more specific)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+spec:
+  parentRefs:
+    - name: vidacruz
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

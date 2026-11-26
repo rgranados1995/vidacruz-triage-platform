@@ -1,0 +1,10 @@
+# A node drain (upgrade of AKS) keeps one replica answering
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: triage-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: triage-service

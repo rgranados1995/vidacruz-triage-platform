@@ -1,6 +1,8 @@
 server:
   port: ${SERVER_PORT}
   shutdown: graceful
+  # Behind the ingress: X-Forwarded-Proto/Host/Prefix build the links of Swagger (only the ingress reaches the pods)
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -9,15 +11,16 @@ spring:
     add-properties: false
   reactor:
     context-propagation: auto
+  # DB_SSL_MODE: disable in the local compose, require (or verify-full) for Azure Database for PostgreSQL
   r2dbc:
-    url: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslMode=${DB_SSL_MODE}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     pool:
       initial-size: ${DB_POOL_INITIAL_SIZE}
       max-size: ${DB_POOL_MAX_SIZE}
   flyway:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${DB_SSL_MODE}
     user: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   kafka:

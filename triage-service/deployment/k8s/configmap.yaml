@@ -1,0 +1,40 @@
+# Every ${VAR} of application.yaml that is not secret (the secret ones are in secret.example.yaml).
+# __DB_HOST__ is replaced at deploy time with the server that infra/azure/main.bicep created.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triage-service-config
+data:
+  SERVER_PORT: "8081"
+  LOG_LEVEL: INFO
+  # No span exporter in Azure yet: sampling everything only costs the trace ids in logs and Kafka headers
+  TRACING_SAMPLING_PROBABILITY: "1.0"
+  DB_HOST: __DB_HOST__
+  DB_PORT: "5432"
+  DB_NAME: triage
+  DB_USERNAME: triage_admin
+  # Azure Database for PostgreSQL only accepts TLS connections
+  DB_SSL_MODE: require
+  DB_POOL_INITIAL_SIZE: "2"
+  DB_POOL_MAX_SIZE: "10"
+  SLA_MINUTES_CRITICAL: "5"
+  SLA_MINUTES_URGENT: "10"
+  SLA_MINUTES_URGENT_2: "30"
+  SLA_MINUTES_NON_URGENT: "60"
+  SLA_MINUTES_NON_URGENT_2: "120"
+  ADMINISTRATIVE_COMPLAINTS: "documentos,recolección de resultados,renovación de recetario,vacunación,seguimiento"
+  # Swagger stays on for the evaluation; it still needs the API key to call the API
+  API_DOCS_ENABLED: "true"
+  KAFKA_BOOTSTRAP_SERVERS: kafka-0.kafka:9092
+  TRIAGE_EVENTS_TOPIC: triaje.eventos
+  TRIAGE_EVENTS_PARTITIONS: "3"
+  # One broker in the cluster (see infra/k8s/kafka.yaml)
+  TRIAGE_EVENTS_REPLICAS: "1"
+  SLA_MONITOR_INTERVAL: 15s
+  SLA_MONITOR_BATCH_SIZE: "100"
+  OUTBOX_POLL_INTERVAL: 500ms
+  OUTBOX_BATCH_SIZE: "100"
+  OUTBOX_LEASE: 30s
+  REPORT_MAX_RANGE: 31d
+  # Below the read timeout of the ingress, so an idle alert stream is never cut
+  ALERTS_HEARTBEAT_INTERVAL: 15s
