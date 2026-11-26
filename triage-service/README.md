@@ -90,6 +90,8 @@ Qué se levanta:
 | `kafka` | 29092 | Eventos `triaje.eventos` |
 | `redis` | 6379 | Estado de urgencias del asistente |
 | `jaeger` | **16686** | Trazas (para ver una solicitud de punta a punta) |
+| `grafana` | **3000** | Tableros de métricas, ya configurados |
+| `prometheus` | 9090 | Guarda las métricas de los dos servicios |
 
 ## 4. Comprobar que está vivo
 
@@ -579,7 +581,19 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 Tipos: `paciente_registrado`, `paciente_en_consulta`, `paciente_escalado`, `paciente_alta`. Los eventos **no llevan
 el nombre** del paciente. Pulsa `Ctrl+C` para salir.
 
-**Métricas** en <http://localhost:8081/prometheus>. Busca:
+**Tableros en Grafana** (lo más fácil): abre <http://localhost:3000>. No pide usuario: entras directo al tablero
+**VidaCruz · Urgencias**. Arriba, el botón **Otros tableros** lleva a los demás:
+
+| Tablero | Qué muestra |
+|---|---|
+| **VidaCruz · Urgencias** | Pacientes clasificados, escalamientos y alertas reconocidas y sin reconocer, por nivel y por minuto |
+| **VidaCruz · Asistente clínico** | Respuestas por resultado, latencia de la IA, circuit breaker, eventos procesados y lag de Kafka |
+| **VidaCruz · Servicios** | Peticiones por segundo, errores 4xx/5xx, latencia p95 por ruta, memoria, CPU, pool de PostgreSQL y Redis |
+
+Se actualizan cada 5 segundos. Registra pacientes (o corre la colección de Postman) y míralos moverse. Arriba a la
+derecha cambias el rango de tiempo. Prometheus, que guarda las métricas, está en <http://localhost:9090>.
+
+**Métricas en crudo** en <http://localhost:8081/prometheus>. Busca:
 
 - `triage_patients_classified_total{level=...}`: pacientes clasificados por nivel.
 - `triage_patients_escalated_total{level=...}`: escalamientos.
@@ -597,7 +611,8 @@ docker compose logs triage-service
 
 | Síntoma | Solución |
 |---|---|
-| `port is already allocated` al levantar | Otro programa usa ese puerto (por ejemplo, un PostgreSQL instalado en 5432). Ciérralo o detén ese servicio |
+| `port is already allocated` al levantar | Otro programa usa ese puerto (por ejemplo, un PostgreSQL instalado en 5432, u otro Grafana en 3000). Ciérralo o detén ese servicio |
+| Un panel de Grafana dice *No data* | Todavía no hay tráfico de ese tipo (por ejemplo, la latencia de la IA sin `ANTHROPIC_API_KEY`), o el rango de tiempo es muy corto |
 | El servicio no responde después de levantar | Espera 1 o 2 minutos y revisa `docker compose ps`; mira los logs con `docker compose logs triage-service` |
 | Un contenedor se cae por memoria | Sube la memoria de Docker Desktop a 8 GB (sección 1) |
 | En PowerShell `curl` da un error raro de parámetros | Escribe `curl.exe`, no `curl` |

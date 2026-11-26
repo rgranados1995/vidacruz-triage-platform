@@ -366,7 +366,18 @@ Más detalle en [`docs/adr/0002-rag-del-asistente.md`](../docs/adr/0002-rag-del-
 
 ## 11. Ver por dentro: métricas y trazas
 
-**Métricas** en <http://localhost:8082/prometheus>. Busca:
+**Tableros en Grafana:** abre <http://localhost:3000> y, con el botón **Otros tableros**, elige **VidaCruz · Asistente clínico**. Muestra:
+
+- las preguntas respondidas, con fuentes y en modo degradado;
+- el estado del circuit breaker;
+- las respuestas por resultado;
+- la latencia de cada intento a la IA (p50 y p95);
+- los eventos del triaje procesados;
+- el lag de Kafka.
+
+Se actualiza cada 5 segundos. Sin `ANTHROPIC_API_KEY`, los paneles de latencia de la IA quedan vacíos (no hubo llamadas). El tablero **VidaCruz · Servicios** muestra el tráfico HTTP, los errores y los recursos de los dos servicios.
+
+**Métricas en crudo** en <http://localhost:8082/prometheus>. Busca:
 
 - `assistant_answers_total{outcome=...}`: preguntas por resultado (`answered`, `no_matching_protocol`,
   `declined_by_model`, `unsupported_answer`, `unavailable`).

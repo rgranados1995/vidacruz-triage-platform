@@ -64,4 +64,5 @@ entorno, que en GitHub Actions vienen de los secretos del environment `azure`.
   para la evaluación; en producción serían 3 nodos en zonas y Kafka administrado.
 - Evoluciones documentadas: Event Hubs o un Kafka con 3 brokers; Key Vault con el driver CSI y Workload Identity para
   los secretos; red privada para PostgreSQL; NetworkPolicies (requieren Cilium al crear el clúster); exportación de
-  trazas a Azure Monitor.
+  trazas a Azure Monitor; métricas en Azure Monitor managed Prometheus con Azure Managed Grafana, reusando los
+  tableros de `observability/grafana` (en local ya corren con Prometheus y Grafana en el compose).

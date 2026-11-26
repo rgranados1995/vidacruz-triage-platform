@@ -115,6 +115,10 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    # Buckets of the HTTP latency, so the dashboards can compute the p95 of each route
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   # The spans are exported over OTLP only when the environment sets MANAGEMENT_OTLP_TRACING_ENDPOINT (for example
   # http://jaeger:4318/v1/traces); without it the trace ids still reach the logs and the Kafka headers.
   tracing:

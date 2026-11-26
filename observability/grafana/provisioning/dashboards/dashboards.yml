@@ -1,0 +1,11 @@
+# Dashboards loaded from observability/grafana/dashboards when Grafana starts (read-only copies of the files).
+apiVersion: 1
+
+providers:
+  - name: vidacruz
+    folder: VidaCruz
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
