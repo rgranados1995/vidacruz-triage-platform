@@ -13,12 +13,16 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApiErrorHandlerTest {
 
-    private final ApiErrorHandler handler = new ApiErrorHandler(new ApiErrorWriter(new ObjectMapper()));
+    private final ApiErrorHandler handler = new ApiErrorHandler(new ApiErrorWriter(new ObjectMapper(),
+            new ErrorResponseProperties(Duration.ofSeconds(30))));
 
     @Test
     void shouldWriteTheErrorAsProblemDetailsAndLogItsCode(CapturedOutput output) {
@@ -44,6 +48,17 @@ class ApiErrorHandlerTest {
         StepVerifier.create(handler.handle(exchange(), new IllegalStateException("bug"))).verifyComplete();
 
         assertThat(output).contains("ERROR", "errorCode=\"AST-999\"", "java.lang.IllegalStateException: bug");
+    }
+
+    @Test
+    void shouldRequireARetryAfterOfAtLeastOneSecond() {
+        var halfSecond = Duration.ofMillis(500);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new ErrorResponseProperties(halfSecond));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new ErrorResponseProperties(null));
+        assertThat(new ErrorResponseProperties(Duration.ofSeconds(1)).unavailableRetryAfter()).hasSeconds(1);
     }
 
     @Test

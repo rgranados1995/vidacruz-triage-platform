@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 @ContextConfiguration(classes = {ConsultationRouter.class, ConsultationHandler.class, ApiErrorHandler.class,
         ApiErrorWriter.class, ApiKeySecurityConfig.class, SecurityHeadersConfig.class})
 @TestPropertySource(properties = {"routes.consultation=/asistente/consulta",
-        "security.api-key=" + ConsultationRouterTest.KEY})
+        "errors.unavailable-retry-after=30s", "security.api-key=" + ConsultationRouterTest.KEY})
 class ConsultationRouterTest {
 
     static final String KEY = "test-api-key-0001";
@@ -78,6 +78,7 @@ class ConsultationRouterTest {
 
         consult("{\"pregunta\": \"" + HYPERTENSION + "\"}").expectStatus().isEqualTo(503)
                 .expectHeader().contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .expectHeader().valueEquals("Retry-After", "30")
                 .expectBody()
                 .jsonPath("$.codigo").isEqualTo("AST-002")
                 .jsonPath("$.title").isEqualTo("El asistente clínico no está disponible en este momento")
@@ -91,6 +92,7 @@ class ConsultationRouterTest {
                 BusinessError.INVALID_QUESTION, "la pregunta debe tener entre 3 y 1000 caracteres")));
 
         consult("{\"pregunta\": \"a\"}").expectStatus().isBadRequest()
+                .expectHeader().doesNotExist("Retry-After")
                 .expectBody()
                 .jsonPath("$.codigo").isEqualTo("AST-001")
                 .jsonPath("$.errores[0].campo").isEqualTo("pregunta")

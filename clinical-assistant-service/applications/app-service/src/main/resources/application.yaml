@@ -25,6 +25,42 @@ adapters:
     embedding-model: ${EMBEDDING_MODEL_URI}
     embedding-tokenizer: ${EMBEDDING_TOKENIZER_URI}
 
+# Resilience of the calls to the AI provider (ADR 0003). Retry outermost, then the circuit breaker, then the time
+# limit of each attempt; whatever they give up on is answered as 503 (degraded mode).
+resilience4j:
+  retry:
+    instances:
+      claude:
+        # Attempts in total, the first one included; only transient failures are retried
+        max-attempts: ${LLM_RETRY_MAX_ATTEMPTS}
+        wait-duration: ${LLM_RETRY_BACKOFF}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exception-predicate: com.vidacruz.assistant.claude.ProviderFailures$Transient
+  circuitbreaker:
+    instances:
+      claude:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        record-exception-predicate: com.vidacruz.assistant.claude.ProviderFailures$Outage
+        # An open circuit is the degraded mode, not an unhealthy pod: it stays out of the probes
+        register-health-indicator: false
+  timelimiter:
+    instances:
+      claude:
+        timeout-duration: ${LLM_TIMEOUT}
+        cancel-running-future: true
+
+errors:
+  # Retry-After of a 503: the time the circuit breaker stays open
+  unavailable-retry-after: 30s
+
 routes:
   consultation: /asistente/consulta
 

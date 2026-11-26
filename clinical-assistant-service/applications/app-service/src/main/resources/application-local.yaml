@@ -7,13 +7,24 @@ adapters:
     api-key: ${ANTHROPIC_API_KEY:}
     model: claude-opus-5-5
     effort: medium
-    timeout: 20s
+    timeout: 15s
   protocol-corpus:
     top-k: 3
     similarity-threshold: 0.50
     # Downloaded by ./gradlew downloadEmbeddingModel
     embedding-model: file:${user.home}/.gradle/caches/vidacruz/paraphrase-multilingual-MiniLM-L12-v2-e8f8c21/model.onnx
     embedding-tokenizer: file:${user.home}/.gradle/caches/vidacruz/paraphrase-multilingual-MiniLM-L12-v2-e8f8c21/tokenizer.json
+
+resilience4j:
+  retry:
+    instances:
+      claude:
+        max-attempts: 2
+        wait-duration: 500ms
+  timelimiter:
+    instances:
+      claude:
+        timeout-duration: 15s
 
 security:
   api-key: local-dev-assistant-key-0001

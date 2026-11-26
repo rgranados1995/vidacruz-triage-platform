@@ -8,8 +8,15 @@ import com.vidacruz.assistant.model.exception.BusinessError;
 import com.vidacruz.assistant.model.exception.BusinessException;
 import com.vidacruz.assistant.model.protocol.ProtocolExcerpt;
 import com.vidacruz.assistant.model.question.ClinicalQuestion;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -30,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The adapter against a fake Anthropic API: the shape of the request and every kind of answer.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class ClaudeAnswerGeneratorTest {
 
     @RegisterExtension
@@ -151,19 +159,38 @@ class ClaudeAnswerGeneratorTest {
 
     @Test
     void shouldRunDegradedWithoutAKey() {
-        var generator = new ClaudeConfig().answerGenerator(properties(" "));
+        var generator = new ClaudeConfig().answerGenerator(properties(" "), CircuitBreakerRegistry.ofDefaults(),
+                RetryRegistry.ofDefaults(), TimeLimiterRegistry.ofDefaults());
 
         assertThat(generator).isInstanceOf(UnavailableAnswerGenerator.class);
         StepVerifier.create(generator.generate(QUESTION, EXCERPTS))
                 .expectErrorMatches(error -> error instanceof BusinessException business
                         && business.getError() == BusinessError.ASSISTANT_UNAVAILABLE)
                 .verify();
-        assertThat(new ClaudeConfig().answerGenerator(properties(FAKE_KEY))).isInstanceOf(ClaudeAnswerGenerator.class);
+    }
+
+    @Test
+    void shouldBuildClaudeWithTheResiliencePolicyOfTheRegistries(CapturedOutput output) {
+        ANTHROPIC.stubFor(post(urlPathEqualTo(MESSAGES)).willReturn(aResponse().withStatus(529)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"x\"}}")));
+        var retries = RetryRegistry.of(RetryConfig.custom().maxAttempts(2).waitDuration(Duration.ofMillis(10))
+                .build());
+
+        var generator = new ClaudeConfig().answerGenerator(properties(FAKE_KEY), CircuitBreakerRegistry.ofDefaults(),
+                retries, TimeLimiterRegistry.ofDefaults());
+
+        assertThat(generator).isInstanceOf(ClaudeAnswerGenerator.class);
+        StepVerifier.create(generator.generate(QUESTION, EXCERPTS)).expectError(BusinessException.class)
+                .verify(Duration.ofSeconds(10));
+        ANTHROPIC.verify(2, postRequestedFor(urlPathEqualTo(MESSAGES)));
+        assertThat(output).contains("Retrying the call to Claude");
     }
 
     private static ClaudeAnswerGenerator generator() {
         var properties = properties(FAKE_KEY);
-        return new ClaudeAnswerGenerator(ClaudeConfig.anthropicClient(properties), properties);
+        return new ClaudeAnswerGenerator(ClaudeConfig.anthropicClient(properties), properties,
+                ClaudeResilienceTest.resilience(Duration.ofSeconds(1), Duration.ofSeconds(5)));
     }
 
     static ClaudeProperties properties(String key) {

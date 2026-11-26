@@ -24,7 +24,9 @@ import java.util.List;
  * Drafts the answer with Claude through the official Anthropic SDK, asynchronously (no thread waits for the API).
  * The answer comes back as structured JSON ({@link ModelAnswer}); server-side fallbacks are on, so a request refused
  * by one model is retried by the API on another. Whatever the model returns is checked afterwards against the
- * excerpts (RN-05); here a refusal or an unreadable answer only becomes an answer without content.
+ * excerpts (RN-05); here a refusal or an unreadable answer only becomes an answer without content. Every call goes
+ * through the resilience policy ({@link ClaudeResilience}); whatever it gives up on becomes the explicit fallback of
+ * the degraded mode: {@link BusinessError#ASSISTANT_UNAVAILABLE}, answered as 503.
  */
 @Slf4j
 public class ClaudeAnswerGenerator implements AnswerGenerator {
@@ -33,16 +35,22 @@ public class ClaudeAnswerGenerator implements AnswerGenerator {
 
     private final AnthropicClientAsync client;
     private final ClaudeProperties properties;
+    private final ClaudeResilience resilience;
 
-    public ClaudeAnswerGenerator(AnthropicClientAsync client, ClaudeProperties properties) {
+    public ClaudeAnswerGenerator(AnthropicClientAsync client, ClaudeProperties properties,
+                                 ClaudeResilience resilience) {
         this.client = client;
         this.properties = properties;
+        this.resilience = resilience;
     }
 
     @Override
     public Mono<GeneratedAnswer> generate(ClinicalQuestion question, ExcerptSet excerpts) {
         return Mono.fromCallable(() -> request(question, excerpts))
-                .flatMap(request -> Mono.fromFuture(() -> client.beta().messages().create(request), true))
+                // suppressCancel = false: when the time limit cancels an attempt, its HTTP call is cancelled too,
+                // so it neither keeps a connection busy nor fails later with nobody listening
+                .flatMap(request -> resilience.protect(
+                        Mono.fromFuture(() -> client.beta().messages().create(request), false)))
                 .doOnNext(this::logAnswer)
                 .map(ClaudeAnswerGenerator::toGenerated)
                 .onErrorResume(AnthropicInvalidDataException.class, error -> {

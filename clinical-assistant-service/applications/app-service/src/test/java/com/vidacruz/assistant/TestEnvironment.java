@@ -30,7 +30,9 @@ final class TestEnvironment {
         registry.add("adapters.claude.base-url", () -> anthropicBaseUrl);
         registry.add("LLM_MODEL", () -> "claude-opus-5-5");
         registry.add("LLM_EFFORT", () -> "medium");
-        registry.add("LLM_TIMEOUT", () -> "5s");
+        registry.add("LLM_TIMEOUT", () -> "2s");
+        registry.add("LLM_RETRY_MAX_ATTEMPTS", () -> "2");
+        registry.add("LLM_RETRY_BACKOFF", () -> "20ms");
         registry.add("RAG_TOP_K", () -> "3");
         registry.add("RAG_SIMILARITY_THRESHOLD", () -> "0.50");
         registry.add("EMBEDDING_MODEL_URI", () -> new File(model, "model.onnx").toURI().toString());
