@@ -12,6 +12,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    // Exports the spans over OTLP only where MANAGEMENT_OTLP_TRACING_ENDPOINT is set (Jaeger locally)
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
     // Registries of the circuit breaker, retry and time limiter of the LLM, configured in application.yaml
     implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
     runtimeOnly('org.springframework.boot:spring-boot-devtools')

@@ -4,6 +4,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.slf4j:slf4j-api'
+    implementation 'io.micrometer:micrometer-core'
     implementation "com.anthropic:anthropic-java:${anthropicVersion}"
     implementation "io.github.resilience4j:resilience4j-reactor:${resilience4jVersion}"
     implementation "io.github.resilience4j:resilience4j-circuitbreaker:${resilience4jVersion}"

@@ -6,6 +6,8 @@ import com.vidacruz.assistant.api.consultation.dto.SourceResponse;
 import com.vidacruz.assistant.api.error.InvalidRequestException;
 import com.vidacruz.assistant.model.answer.AnswerOutcome;
 import com.vidacruz.assistant.model.answer.GroundedAnswer;
+import com.vidacruz.assistant.model.exception.BusinessError;
+import com.vidacruz.assistant.model.exception.BusinessException;
 import com.vidacruz.assistant.usecase.answerclinicalquestion.AnswerClinicalQuestionUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 public class ConsultationHandler {
 
     private final AnswerClinicalQuestionUseCase answerClinicalQuestion;
+    private final ConsultationMetrics metrics;
 
     public Mono<ServerResponse> consult(ServerRequest request) {
         return request.bodyToMono(ConsultationRequest.class)
@@ -34,6 +37,8 @@ public class ConsultationHandler {
                         new InvalidRequestException(null, "El cuerpo de la solicitud es obligatorio"))))
                 .flatMap(body -> answerClinicalQuestion.answer(body.question()))
                 .doOnNext(ConsultationHandler::logAnswer)
+                .doOnNext(grounded -> metrics.answered(grounded.outcome()))
+                .doOnError(ConsultationHandler::isUnavailable, unavailable -> metrics.unavailable())
                 .flatMap(grounded -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(toResponse(grounded)));
@@ -45,6 +50,11 @@ public class ConsultationHandler {
             sources.add(new SourceResponse(source.protocol(), source.section()));
         }
         return new ConsultationResponse(grounded.answer().text(), sources);
+    }
+
+    private static boolean isUnavailable(Throwable error) {
+        return error instanceof BusinessException business
+                && business.getError() == BusinessError.ASSISTANT_UNAVAILABLE;
     }
 
     /** A discarded answer of the model is a warning: someone should look at why it did not cite the corpus. */

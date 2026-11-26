@@ -80,7 +80,27 @@ class PostgresOutboxRepositoryIntegrationTest {
                     assertThat(message.payload()).contains("\"subject\"");
                     assertThat(message.occurredAt()).isNotNull();
                     assertThat(UUID.fromString(message.key())).isNotNull();
+                    assertThat(message.traceParent()).isNull();
                 })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnTheTraceContextStoredWithTheEvent() {
+        var traceParent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+        StepVerifier.create(client.sql(OutboxSql.INSERT)
+                        .bind("eventId", UUID.randomUUID())
+                        .bind("aggregateId", UUID.randomUUID())
+                        .bind("eventType", "paciente_registrado")
+                        .bind("payload", Json.of("{}"))
+                        .bind("occurredAt", Instant.now())
+                        .bind("traceparent", traceParent)
+                        .fetch().rowsUpdated())
+                .expectNext(1L)
+                .verifyComplete();
+
+        StepVerifier.create(repository.claimPending(1, LONG_LEASE).map(OutboxMessage::traceParent))
+                .expectNext(traceParent)
                 .verifyComplete();
     }
 
@@ -134,6 +154,7 @@ class PostgresOutboxRepositoryIntegrationTest {
                             .bind("eventType", "paciente_registrado")
                             .bind("payload", Json.of("{\"subject\": \"" + eventId + "\"}"))
                             .bind("occurredAt", Instant.now())
+                            .bindNull("traceparent", String.class)
                             .fetch().rowsUpdated())
                     .expectNext(1L)
                     .verifyComplete();

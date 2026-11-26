@@ -37,6 +37,7 @@ class KafkaEventPublisherIntegrationTest {
     private static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.1");
 
     private static final String TOPIC = "triaje.eventos.test";
+    private static final String TRACE_PARENT = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
     private static ReactiveKafkaProducerTemplate<String, String> producer;
 
@@ -58,8 +59,8 @@ class KafkaEventPublisherIntegrationTest {
     void shouldPublishTheEventsOfAPatientInOrderWithItsKeyAndContentType() {
         var publisher = new KafkaEventPublisher(producer, new TriageEventsTopicProperties(TOPIC, 3, (short) 1));
         var patientId = UUID.randomUUID().toString();
-        var registered = message(patientId, "paciente_registrado");
-        var inConsultation = message(patientId, "paciente_en_consulta");
+        var registered = message(patientId, "paciente_registrado", TRACE_PARENT);
+        var inConsultation = message(patientId, "paciente_en_consulta", null);
 
         StepVerifier.create(publisher.publish(registered).then(publisher.publish(inConsultation))).verifyComplete();
 
@@ -69,12 +70,15 @@ class KafkaEventPublisherIntegrationTest {
                 .containsExactly(registered.payload(), inConsultation.payload());
         assertThat(new String(records.getFirst().headers().lastHeader("content-type").value(),
                 StandardCharsets.UTF_8)).isEqualTo("application/cloudevents+json; charset=UTF-8");
+        assertThat(new String(records.getFirst().headers().lastHeader("traceparent").value(),
+                StandardCharsets.UTF_8)).isEqualTo(TRACE_PARENT);
+        assertThat(records.getLast().headers().lastHeader("traceparent")).isNull();
     }
 
-    private static OutboxMessage message(String patientId, String type) {
+    private static OutboxMessage message(String patientId, String type, String traceParent) {
         var eventId = UUID.randomUUID();
         return new OutboxMessage(eventId, patientId, type, "{\"id\":\"" + eventId + "\",\"type\":\"" + type + "\"}",
-                Instant.now());
+                Instant.now(), traceParent);
     }
 
     private static List<ConsumerRecord<String, String>> readAll(int expected) {

@@ -4,6 +4,7 @@ import com.vidacruz.triage.model.alert.MedicalAlert;
 import com.vidacruz.triage.model.alert.gateways.MedicalAlertRepository;
 import com.vidacruz.triage.model.exception.BusinessError;
 import com.vidacruz.triage.model.exception.BusinessException;
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +18,7 @@ public class AcknowledgeAlertUseCase {
 
     private final MedicalAlertRepository medicalAlertRepository;
     private final Clock clock;
+    private final TriageMetrics metrics;
 
     /**
      * Emits the acknowledged alert, or a {@link BusinessException} with {@link BusinessError#ALERT_NOT_FOUND} or
@@ -25,6 +27,7 @@ public class AcknowledgeAlertUseCase {
     public Mono<MedicalAlert> acknowledge(long alertId, String acknowledgedBy) {
         return Mono.fromCallable(clock::instant)
                 .flatMap(now -> medicalAlertRepository.acknowledge(alertId, acknowledgedBy, now))
+                .doOnNext(acknowledged -> metrics.alertAcknowledged(acknowledged.getTriageLevel()))
                 .switchIfEmpty(Mono.defer(() -> whyNotAcknowledged(alertId)));
     }
 

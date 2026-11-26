@@ -52,7 +52,8 @@ public class PostgresOutboxRepository implements OutboxRepository {
                 String.valueOf(row.get("aggregate_id", UUID.class)),
                 row.get("event_type", String.class),
                 row.get("payload", Json.class).asString(),
-                row.get("occurred_at", Instant.class));
+                row.get("occurred_at", Instant.class),
+                row.get("traceparent", String.class));
         return new ClaimedEvent(row.get("id", Long.class), message);
     }
 

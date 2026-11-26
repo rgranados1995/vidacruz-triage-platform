@@ -11,6 +11,10 @@ import com.vidacruz.triage.model.patient.VitalSigns;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.r2dbc.alert.AlertWriter;
 import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
+import io.micrometer.tracing.CurrentTraceContext;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
 import io.r2dbc.postgresql.PostgresqlConnectionFactory;
 import io.r2dbc.spi.ConnectionFactory;
@@ -32,9 +36,15 @@ import reactor.test.StepVerifier;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Runs the adapter against a real PostgreSQL with the migrations of the module applied.
@@ -47,6 +57,7 @@ class PostgresPatientRepositoryIntegrationTest {
 
     private static final Instant REGISTERED_AT = Instant.parse("2026-11-25T10:00:00Z");
     private static final Instant LATER = REGISTERED_AT.plusSeconds(300);
+    private static final String TRACE_PARENT = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
     private static final String COUNT_AUDIT = "SELECT COUNT(*) AS total FROM clinical_audit WHERE patient_id = :id";
     private static final String OUTBOX_TYPES = """
             SELECT event_type FROM outbox_event WHERE aggregate_id = :id ORDER BY id""";
@@ -75,8 +86,8 @@ class PostgresPatientRepositoryIntegrationTest {
     void setUp() {
         client = DatabaseClient.create(connectionFactory);
         var transactions = TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory));
-        repository = new PostgresPatientRepository(client, transactions, new OutboxWriter(client),
-                new AlertWriter(client));
+        repository = new PostgresPatientRepository(client, transactions,
+                new OutboxWriter(client, Tracer.NOOP, Propagator.NOOP), new AlertWriter(client));
     }
 
     @Test
@@ -102,7 +113,7 @@ class PostgresPatientRepositoryIntegrationTest {
                 .verifyComplete();
         StepVerifier.create(client.sql("""
                         SELECT event_type, payload->>'type' AS cloud_type, payload->>'subject' AS subject,
-                               published_at
+                               published_at, traceparent
                           FROM outbox_event WHERE aggregate_id = :id""")
                         .bind("id", patient.getId()).fetch().one())
                 .assertNext(row -> {
@@ -110,7 +121,35 @@ class PostgresPatientRepositoryIntegrationTest {
                             .containsEntry("cloud_type", "paciente_registrado")
                             .containsEntry("subject", patient.getId().toString());
                     assertThat(row.get("published_at")).isNull();
+                    // Outside a trace there is no context to hand to the consumers
+                    assertThat(row.get("traceparent")).isNull();
                 })
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldStoreTheTraceContextOfTheChangeWithItsEvent() {
+        var context = mock(TraceContext.class);
+        var current = mock(CurrentTraceContext.class);
+        var tracer = mock(Tracer.class);
+        when(tracer.currentTraceContext()).thenReturn(current);
+        when(current.context()).thenReturn(context);
+        var propagator = mock(Propagator.class);
+        doAnswer(call -> {
+            call.<Propagator.Setter<Map<String, String>>>getArgument(2)
+                    .set(call.getArgument(1), "traceparent", TRACE_PARENT);
+            return null;
+        }).when(propagator).inject(eq(context), any(), any());
+        var traced = new PostgresPatientRepository(client,
+                TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory)),
+                new OutboxWriter(client, tracer, propagator), new AlertWriter(client));
+        var patient = newPatient();
+
+        StepVerifier.create(traced.register(PatientChange.registration(patient))).expectNext(patient).verifyComplete();
+
+        StepVerifier.create(client.sql("SELECT traceparent FROM outbox_event WHERE aggregate_id = :id")
+                        .bind("id", patient.getId()).map(row -> row.get("traceparent", String.class)).one())
+                .expectNext(TRACE_PARENT)
                 .verifyComplete();
     }
 

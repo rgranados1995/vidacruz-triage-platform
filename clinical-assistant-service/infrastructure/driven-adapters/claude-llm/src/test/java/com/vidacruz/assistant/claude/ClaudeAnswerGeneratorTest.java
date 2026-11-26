@@ -12,6 +12,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -159,8 +160,10 @@ class ClaudeAnswerGeneratorTest {
 
     @Test
     void shouldRunDegradedWithoutAKey() {
-        var generator = new ClaudeConfig().answerGenerator(properties(" "), CircuitBreakerRegistry.ofDefaults(),
-                RetryRegistry.ofDefaults(), TimeLimiterRegistry.ofDefaults());
+        var config = new ClaudeConfig();
+        var generator = config.answerGenerator(properties(" "), config.claudeResilience(
+                CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults(), TimeLimiterRegistry.ofDefaults(),
+                new SimpleMeterRegistry()));
 
         assertThat(generator).isInstanceOf(UnavailableAnswerGenerator.class);
         StepVerifier.create(generator.generate(QUESTION, EXCERPTS))
@@ -176,15 +179,20 @@ class ClaudeAnswerGeneratorTest {
                 .withBody("{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"x\"}}")));
         var retries = RetryRegistry.of(RetryConfig.custom().maxAttempts(2).waitDuration(Duration.ofMillis(10))
                 .build());
+        var meters = new SimpleMeterRegistry();
+        var config = new ClaudeConfig();
 
-        var generator = new ClaudeConfig().answerGenerator(properties(FAKE_KEY), CircuitBreakerRegistry.ofDefaults(),
-                retries, TimeLimiterRegistry.ofDefaults());
+        var generator = config.answerGenerator(properties(FAKE_KEY), config.claudeResilience(
+                CircuitBreakerRegistry.ofDefaults(), retries, TimeLimiterRegistry.ofDefaults(), meters));
 
         assertThat(generator).isInstanceOf(ClaudeAnswerGenerator.class);
         StepVerifier.create(generator.generate(QUESTION, EXCERPTS)).expectError(BusinessException.class)
                 .verify(Duration.ofSeconds(10));
         ANTHROPIC.verify(2, postRequestedFor(urlPathEqualTo(MESSAGES)));
         assertThat(output).contains("Retrying the call to Claude");
+        // One sample per attempt, in the registry of the application
+        assertThat(meters.get(LlmCallMetrics.LATENCY).tag(LlmCallMetrics.OUTCOME_TAG, LlmCallMetrics.SERVER_ERROR)
+                .timer().count()).isEqualTo(2);
     }
 
     private static ClaudeAnswerGenerator generator() {

@@ -12,6 +12,8 @@ import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.r2dbc.alert.AlertWriter;
 import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import com.vidacruz.triage.r2dbc.patient.PostgresPatientRepository;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
 import io.r2dbc.postgresql.PostgresqlConnectionFactory;
 import io.r2dbc.spi.ConnectionFactory;
@@ -76,8 +78,8 @@ class PostgresOperationReportRepositoryIntegrationTest {
         connectionFactory = connectionFactory(Map.of());
         var client = DatabaseClient.create(connectionFactory);
         var patients = new PostgresPatientRepository(client,
-                TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory)), new OutboxWriter(client),
-                new AlertWriter(client));
+                TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory)),
+                new OutboxWriter(client, Tracer.NOOP, Propagator.NOOP), new AlertWriter(client));
 
         var p1 = store(patients, TriageLevel.CRITICAL, "08:05:00");
         consult(patients, p1, "08:10:00");

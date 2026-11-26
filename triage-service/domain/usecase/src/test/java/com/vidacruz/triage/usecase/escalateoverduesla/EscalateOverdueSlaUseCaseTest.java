@@ -1,6 +1,7 @@
 package com.vidacruz.triage.usecase.escalateoverduesla;
 
 import com.vidacruz.triage.model.audit.PatientEventType;
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.patient.Patient;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.PatientStatus;
@@ -37,13 +38,15 @@ class EscalateOverdueSlaUseCaseTest {
 
     @Mock
     private PatientRepository patientRepository;
+    @Mock
+    private TriageMetrics metrics;
 
     private EscalateOverdueSlaUseCase useCase;
 
     @BeforeEach
     void setUp() {
         useCase = new EscalateOverdueSlaUseCase(patientRepository, new SlaMonitorPolicy(20),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), metrics);
     }
 
     @Test
@@ -76,6 +79,8 @@ class EscalateOverdueSlaUseCaseTest {
                 .thenAnswer(call -> Mono.just(call.<PatientChange>getArgument(0).patient()));
 
         StepVerifier.create(useCase.escalateOverdue()).expectNext(1L).verifyComplete();
+
+        verify(metrics, times(1)).patientEscalated(TriageLevel.CRITICAL);
     }
 
     @Test

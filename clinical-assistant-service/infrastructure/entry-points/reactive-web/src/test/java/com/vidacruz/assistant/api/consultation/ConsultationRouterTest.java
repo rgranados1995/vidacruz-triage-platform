@@ -11,6 +11,7 @@ import com.vidacruz.assistant.model.answer.Source;
 import com.vidacruz.assistant.model.exception.BusinessError;
 import com.vidacruz.assistant.model.exception.BusinessException;
 import com.vidacruz.assistant.usecase.answerclinicalquestion.AnswerClinicalQuestionUseCase;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
@@ -28,8 +29,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest
-@ContextConfiguration(classes = {ConsultationRouter.class, ConsultationHandler.class, ApiErrorHandler.class,
-        ApiErrorWriter.class, ApiKeySecurityConfig.class, SecurityHeadersConfig.class})
+@ContextConfiguration(classes = {ConsultationRouter.class, ConsultationHandler.class, ConsultationMetrics.class,
+        SimpleMeterRegistry.class, ApiErrorHandler.class, ApiErrorWriter.class, ApiKeySecurityConfig.class,
+        SecurityHeadersConfig.class})
 @TestPropertySource(properties = {"routes.consultation=/asistente/consulta",
         "errors.unavailable-retry-after=30s", "security.api-key=" + ConsultationRouterTest.KEY})
 class ConsultationRouterTest {

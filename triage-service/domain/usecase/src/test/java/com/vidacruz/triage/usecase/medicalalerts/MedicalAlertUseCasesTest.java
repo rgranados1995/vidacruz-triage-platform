@@ -5,6 +5,7 @@ import com.vidacruz.triage.model.alert.MedicalAlert;
 import com.vidacruz.triage.model.alert.gateways.MedicalAlertRepository;
 import com.vidacruz.triage.model.exception.BusinessError;
 import com.vidacruz.triage.model.exception.BusinessException;
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +35,8 @@ class MedicalAlertUseCasesTest {
 
     @Mock
     private MedicalAlertRepository repository;
+    @Mock
+    private TriageMetrics metrics;
 
     @Test
     void shouldListTheActiveAlerts() {
@@ -71,6 +76,8 @@ class MedicalAlertUseCasesTest {
         StepVerifier.create(acknowledgeUseCase().acknowledge(1, "Dra. Rojas"))
                 .expectNext(acknowledged)
                 .verifyComplete();
+
+        verify(metrics).alertAcknowledged(TriageLevel.CRITICAL);
     }
 
     @Test
@@ -83,6 +90,8 @@ class MedicalAlertUseCasesTest {
                         && business.getError() == BusinessError.ALERT_NOT_ACKNOWLEDGEABLE
                         && "la alerta ya fue reconocida por Dra. Rojas".equals(business.getDetail()))
                 .verify();
+
+        verifyNoInteractions(metrics);
     }
 
     @Test
@@ -97,7 +106,7 @@ class MedicalAlertUseCasesTest {
     }
 
     private AcknowledgeAlertUseCase acknowledgeUseCase() {
-        return new AcknowledgeAlertUseCase(repository, CLOCK);
+        return new AcknowledgeAlertUseCase(repository, CLOCK, metrics);
     }
 
     private static MedicalAlert alert(long id, AlertStatus status) {

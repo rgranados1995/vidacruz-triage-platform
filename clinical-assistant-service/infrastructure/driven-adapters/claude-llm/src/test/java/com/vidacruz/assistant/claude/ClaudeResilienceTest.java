@@ -18,6 +18,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -199,7 +200,7 @@ class ClaudeResilienceTest {
                 .timeoutDuration(attemptTimeout)
                 .cancelRunningFuture(true)
                 .build());
-        return new ClaudeResilience(retry, circuitBreaker, timeLimiter);
+        return new ClaudeResilience(retry, circuitBreaker, timeLimiter, new LlmCallMetrics(new SimpleMeterRegistry()));
     }
 
     private boolean unavailable(Throwable error) {

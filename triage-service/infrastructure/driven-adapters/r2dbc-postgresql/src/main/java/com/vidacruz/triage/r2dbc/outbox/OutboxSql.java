@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 final class OutboxSql {
 
     static final String INSERT = """
-            INSERT INTO outbox_event (event_id, aggregate_id, event_type, payload, occurred_at)
-            VALUES (:eventId, :aggregateId, :eventType, :payload, :occurredAt)
+            INSERT INTO outbox_event (event_id, aggregate_id, event_type, payload, occurred_at, traceparent)
+            VALUES (:eventId, :aggregateId, :eventType, :payload, :occurredAt, :traceparent)
             """;
 
     static final String CLAIM = """
@@ -26,7 +26,7 @@ final class OutboxSql {
                            ORDER BY id
                            LIMIT :batchSize
                              FOR UPDATE SKIP LOCKED)
-            RETURNING id, event_id, aggregate_id, event_type, payload, occurred_at
+            RETURNING id, event_id, aggregate_id, event_type, payload, occurred_at, traceparent
             """;
 
     static final String MARK_PUBLISHED = """

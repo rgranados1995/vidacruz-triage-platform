@@ -83,6 +83,6 @@ class PublishPendingEventsUseCaseTest {
     }
 
     private static OutboxMessage message(String type) {
-        return new OutboxMessage(UUID.randomUUID(), UUID.randomUUID().toString(), type, "{}", Instant.now());
+        return new OutboxMessage(UUID.randomUUID(), UUID.randomUUID().toString(), type, "{}", Instant.now(), null);
     }
 }

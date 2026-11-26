@@ -1,5 +1,6 @@
 package com.vidacruz.triage.usecase.registerpatient;
 
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.patient.Patient;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.PatientIntake;
@@ -26,6 +27,7 @@ public class RegisterPatientUseCase {
     private final TriageClassifier classifier;
     private final SlaPolicy slaPolicy;
     private final Clock clock;
+    private final TriageMetrics metrics;
 
     /**
      * Emits the registered patient, or an {@link com.vidacruz.triage.model.exception.InvalidPatientDataException}
@@ -34,7 +36,8 @@ public class RegisterPatientUseCase {
     public Mono<Patient> register(PatientIntake intake) {
         return Mono.fromCallable(() -> validator.requireValid(intake))
                 .map(this::admit)
-                .flatMap(patient -> patientRepository.register(PatientChange.registration(patient)));
+                .flatMap(patient -> patientRepository.register(PatientChange.registration(patient)))
+                .doOnNext(registered -> metrics.patientClassified(registered.getTriageLevel()));
     }
 
     private Patient admit(PatientIntake intake) {

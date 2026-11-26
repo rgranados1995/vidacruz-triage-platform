@@ -4,6 +4,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
     implementation 'org.postgresql:r2dbc-postgresql'
+    implementation 'io.micrometer:micrometer-tracing'
 
     // Flyway runs the migrations of this module once at startup, over JDBC and before the server accepts requests
     runtimeOnly 'org.flywaydb:flyway-core'

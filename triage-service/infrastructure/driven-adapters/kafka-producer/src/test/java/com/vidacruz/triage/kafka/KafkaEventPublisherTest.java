@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 import reactor.kafka.sender.SenderResult;
 import reactor.test.StepVerifier;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -61,6 +62,30 @@ class KafkaEventPublisherTest {
         assertThat(sent.getValue().key()).isEqualTo(message.key());
         assertThat(sent.getValue().value()).isEqualTo(message.payload());
         assertThat(sent.getValue().partition()).isNull();
+        // Without a trace the record carries only its content type
+        assertThat(sent.getValue().headers().lastHeader("traceparent")).isNull();
+        assertThat(header(sent.getValue(), "content-type")).isEqualTo("application/cloudevents+json; charset=UTF-8");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldHandTheTraceContextOfTheChangeToTheConsumers() {
+        var traceParent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+        var original = message();
+        var traced = new OutboxMessage(original.eventId(), original.key(), original.type(), original.payload(),
+                original.occurredAt(), traceParent);
+        when(producer.send(any(ProducerRecord.class))).thenReturn(Mono.error(new IllegalStateException("closed")));
+
+        StepVerifier.create(new KafkaEventPublisher(producer, TOPIC).publish(traced)).expectError().verify();
+
+        ArgumentCaptor<ProducerRecord<String, String>> sent = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(producer).send(sent.capture());
+        assertThat(header(sent.getValue(), "traceparent")).isEqualTo(traceParent);
+        assertThat(header(sent.getValue(), "content-type")).isEqualTo("application/cloudevents+json; charset=UTF-8");
+    }
+
+    private static String header(ProducerRecord<String, String> sent, String name) {
+        return new String(sent.headers().lastHeader(name).value(), StandardCharsets.UTF_8);
     }
 
     @Test
@@ -86,6 +111,6 @@ class KafkaEventPublisherTest {
 
     private static OutboxMessage message() {
         return new OutboxMessage(UUID.randomUUID(), UUID.randomUUID().toString(), "paciente_registrado", "{}",
-                Instant.now());
+                Instant.now(), null);
     }
 }

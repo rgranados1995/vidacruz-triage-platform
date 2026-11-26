@@ -26,5 +26,7 @@ include ':triage-contract'
 project(':triage-contract').projectDir = file('./infrastructure/helpers/triage-contract')
 include ':kafka-producer'
 project(':kafka-producer').projectDir = file('./infrastructure/driven-adapters/kafka-producer')
+include ':micrometer-metrics'
+project(':micrometer-metrics').projectDir = file('./infrastructure/driven-adapters/micrometer-metrics')
 include ':scheduler'
 project(':scheduler').projectDir = file('./infrastructure/entry-points/scheduler')

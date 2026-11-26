@@ -27,7 +27,16 @@ final class TriageTopicReader {
 
     /** Stops as soon as {@code expected} events of the patient arrived, or when {@code maxWait} passed. */
     static List<JsonNode> eventsOf(String patientId, int expected, Duration maxWait) throws JsonProcessingException {
-        var values = new ArrayList<String>();
+        var events = new ArrayList<JsonNode>();
+        for (var consumed : recordsOf(patientId, expected, maxWait)) {
+            events.add(JSON.readTree(consumed.value()));
+        }
+        return events;
+    }
+
+    /** The records of the patient as they are in the topic, with their headers. */
+    static List<ConsumerRecord<String, String>> recordsOf(String patientId, int expected, Duration maxWait) {
+        var records = new ArrayList<ConsumerRecord<String, String>>();
         try (var consumer = new KafkaConsumer<String, String>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, TestEnvironment.kafkaBootstrapServers(),
                 ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString(),
@@ -36,18 +45,14 @@ final class TriageTopicReader {
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class))) {
             consumer.subscribe(List.of(TestEnvironment.EVENTS_TOPIC));
             var deadline = Instant.now().plus(maxWait);
-            while (values.size() < expected && Instant.now().isBefore(deadline)) {
+            while (records.size() < expected && Instant.now().isBefore(deadline)) {
                 for (ConsumerRecord<String, String> consumed : consumer.poll(Duration.ofMillis(500))) {
                     if (patientId.equals(consumed.key())) {
-                        values.add(consumed.value());
+                        records.add(consumed);
                     }
                 }
             }
         }
-        var events = new ArrayList<JsonNode>();
-        for (var value : values) {
-            events.add(JSON.readTree(value));
-        }
-        return events;
+        return records;
     }
 }

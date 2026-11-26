@@ -11,8 +11,12 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -21,6 +25,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -36,6 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = TestEnvironment.LOG_LEVEL)
 @AutoConfigureWebTestClient
+@AutoConfigureObservability
+@ExtendWith(OutputCaptureExtension.class)
 class UrgencyStateAcceptanceIntegrationTest {
 
     private static final Duration WAIT = Duration.ofSeconds(30);
@@ -96,6 +103,14 @@ class UrgencyStateAcceptanceIntegrationTest {
         var after = await(state -> true);
         assertThat(count(after, TriageLevel.NON_URGENT)).isEqualTo(count(before, TriageLevel.NON_URGENT));
         assertThat(after.totalActive()).isEqualTo(before.totalActive() + 2);
+        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "applied")).isPositive();
+        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "ignored_older"))
+                .isPositive();
+        assertThat(PrometheusScrape.value(client, "assistant_urgency_events_total", "result", "skipped"))
+                .isPositive();
+        // Metrics of the Kafka client: the lag of the consumer
+        assertThat(PrometheusScrape.value(client, "kafka_consumer_fetch_manager_records_lag_max", "application",
+                "clinical-assistant-service")).isNotNegative();
 
         client.get().uri("/asistente/estado-urgencias").header("X-API-Key", TestEnvironment.API_KEY).exchange()
                 .expectStatus().isOk()
@@ -122,6 +137,25 @@ class UrgencyStateAcceptanceIntegrationTest {
         // Empty projection: the consumer reads the topic again from the beginning and gets the same state
         var rebuilt = await(state -> state.activeByLevel().equals(expected.activeByLevel()));
         assertThat(rebuilt.totalActive()).isEqualTo(expected.totalActive());
+    }
+
+    @Test
+    void shouldContinueTheTraceOfTheTriageWhileHandlingItsEvent(CapturedOutput output) throws Exception {
+        var traceId = UUID.randomUUID().toString().replace("-", "");
+        var unreadable = new ProducerRecord<>(TestEnvironment.EVENTS_TOPIC, UUID.randomUUID().toString(),
+                "{traced but not an event");
+        unreadable.headers().add("traceparent", ("00-" + traceId + "-00f067aa0ba902b7-01")
+                .getBytes(StandardCharsets.UTF_8));
+        producer.send(unreadable).get();
+
+        // The warning of the skipped event is logged inside the trace that came in the record
+        StepVerifier.create(Mono.fromCallable(output::getOut)
+                        .filter(logged -> logged.lines().anyMatch(line -> line.contains("Triage event skipped")
+                                && line.contains(traceId)))
+                        .repeatWhenEmpty(rounds -> rounds.delayElements(Duration.ofMillis(200))))
+                .expectNextCount(1)
+                .expectComplete()
+                .verify(WAIT);
     }
 
     /** Polls the projection (without blocking a reactive thread) until it matches. */

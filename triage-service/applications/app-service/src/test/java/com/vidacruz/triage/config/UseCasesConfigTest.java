@@ -1,6 +1,7 @@
 package com.vidacruz.triage.config;
 
 import com.vidacruz.triage.model.alert.gateways.MedicalAlertRepository;
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
 import com.vidacruz.triage.model.outbox.gateways.EventPublisher;
 import com.vidacruz.triage.model.outbox.gateways.OutboxRepository;
@@ -39,6 +40,7 @@ class UseCasesConfigTest {
             .withBean(EventPublisher.class, () -> mock(EventPublisher.class))
             .withBean(OperationReportRepository.class, () -> mock(OperationReportRepository.class))
             .withBean(MedicalAlertRepository.class, () -> mock(MedicalAlertRepository.class))
+            .withBean(TriageMetrics.class, () -> mock(TriageMetrics.class))
             .withPropertyValues(
                     "triage.sla-minutes.CRITICAL=5",
                     "triage.sla-minutes.URGENT=10",

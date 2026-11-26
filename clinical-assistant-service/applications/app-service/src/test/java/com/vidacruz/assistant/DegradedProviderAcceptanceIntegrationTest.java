@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = TestEnvironment.LOG_LEVEL)
 @AutoConfigureWebTestClient
+@AutoConfigureObservability
 class DegradedProviderAcceptanceIntegrationTest {
 
     @RegisterExtension
@@ -37,6 +39,8 @@ class DegradedProviderAcceptanceIntegrationTest {
             .build();
 
     private static final String MESSAGES = "/v1/messages";
+    private static final String SERVER_ERROR = "server_error";
+    private static final String UNAVAILABLE = "unavailable";
     private static final String SEPSIS = "¿Cuándo se administra el primer antibiótico en sepsis?";
 
     @Autowired
@@ -59,11 +63,19 @@ class DegradedProviderAcceptanceIntegrationTest {
 
     @Test
     void shouldRetryOnceAndAnswerServiceUnavailableWithRetryAfter() {
+        var attemptsBefore = attempts(SERVER_ERROR);
+        var unavailableBefore = answers(UNAVAILABLE);
+
         consult().expectStatus().isEqualTo(503)
                 .expectHeader().valueEquals("Retry-After", "30")
                 .expectBody().jsonPath("$.codigo").isEqualTo("AST-002");
 
         ANTHROPIC.verify(2, postRequestedFor(urlPathEqualTo(MESSAGES)));
+        // Both attempts are timed under their outcome, and the question is counted once as degraded
+        assertThat(attempts(SERVER_ERROR)).isEqualTo(attemptsBefore + 2);
+        assertThat(answers(UNAVAILABLE)).isEqualTo(unavailableBefore + 1);
+        assertThat(PrometheusScrape.value(client, "assistant_llm_latency_seconds_bucket", "le", "0.5"))
+                .isNotNegative();
     }
 
     @Test
@@ -85,6 +97,14 @@ class DegradedProviderAcceptanceIntegrationTest {
                 .bodyValue(Map.of("pregunta", "¿Cuál es el tratamiento de primera línea para la diabetes tipo 2?"))
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    private double attempts(String outcome) {
+        return PrometheusScrape.value(client, "assistant_llm_latency_seconds_count", "outcome", outcome);
+    }
+
+    private double answers(String outcome) {
+        return PrometheusScrape.value(client, "assistant_answers_total", "outcome", outcome);
     }
 
     private WebTestClient.ResponseSpec consult() {

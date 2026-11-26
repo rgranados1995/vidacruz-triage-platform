@@ -55,6 +55,13 @@ services:
       timeout: 3s
       retries: 10
 
+  # Traces of both services (OTLP over HTTP), UI at http://localhost:16686
+  jaeger:
+    image: jaegertracing/jaeger:2.10.0
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+
   triage-service:
     build:
       context: ./triage-service
@@ -64,6 +71,7 @@ services:
       SERVER_PORT: 8081
       LOG_LEVEL: INFO
       TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: triage
@@ -109,6 +117,7 @@ services:
       SERVER_PORT: 8082
       LOG_LEVEL: INFO
       TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       ASSISTANT_API_KEY: ${ASSISTANT_API_KEY:-local-dev-assistant-key-0001}
       API_DOCS_ENABLED: "true"
       # Without a key in .env the assistant starts in degraded mode (503 for the questions that need the model)

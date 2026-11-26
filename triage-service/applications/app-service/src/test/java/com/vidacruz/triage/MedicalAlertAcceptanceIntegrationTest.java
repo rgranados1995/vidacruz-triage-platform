@@ -8,6 +8,7 @@ import com.vidacruz.triage.model.patient.gateways.PatientRepository;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = TestEnvironment.LOG_LEVEL)
 @AutoConfigureWebTestClient
+@AutoConfigureObservability
 class MedicalAlertAcceptanceIntegrationTest {
 
     private static final String ALERTS = "/triage/alertas";
@@ -92,6 +94,9 @@ class MedicalAlertAcceptanceIntegrationTest {
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("TRG-009");
+        // The applied escalation and the acknowledgement were counted; the rejected second one was not
+        assertThat(PrometheusScrape.counter(client, "triage_patients_escalated_total", "CRITICAL")).isPositive();
+        assertThat(PrometheusScrape.counter(client, "triage_alerts_acknowledged_total", "CRITICAL")).isPositive();
     }
 
     @Test

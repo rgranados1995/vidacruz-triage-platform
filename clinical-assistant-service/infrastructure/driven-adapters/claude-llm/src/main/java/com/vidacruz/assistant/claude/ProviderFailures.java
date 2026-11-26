@@ -46,7 +46,7 @@ public final class ProviderFailures {
     }
 
     /** The asynchronous client may wrap the failure of the call. */
-    private static Throwable unwrap(Throwable error) {
+    static Throwable unwrap(Throwable error) {
         var failure = error;
         while ((failure instanceof CompletionException || failure instanceof ExecutionException)
                 && failure.getCause() != null) {

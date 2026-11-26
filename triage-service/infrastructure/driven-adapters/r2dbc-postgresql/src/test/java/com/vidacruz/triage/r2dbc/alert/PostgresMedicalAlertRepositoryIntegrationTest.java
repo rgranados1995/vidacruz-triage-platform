@@ -9,6 +9,8 @@ import com.vidacruz.triage.model.patient.VitalSigns;
 import com.vidacruz.triage.model.triage.TriageLevel;
 import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import com.vidacruz.triage.r2dbc.patient.PostgresPatientRepository;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
 import io.r2dbc.postgresql.PostgresqlConnectionFactory;
 import io.r2dbc.spi.ConnectionFactory;
@@ -67,7 +69,14 @@ class PostgresMedicalAlertRepositoryIntegrationTest {
         client = DatabaseClient.create(connectionFactory);
         transactions = TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory));
         // Escalated before the alerts existed: the migration that creates them has to raise its alert
-        patients = new PostgresPatientRepository(client, transactions, new OutboxWriter(client),
+        // The outbox of version 4 has no trace column yet: these patients only need their escalation
+        patients = new PostgresPatientRepository(client, transactions,
+                new OutboxWriter(client, Tracer.NOOP, Propagator.NOOP) {
+                    @Override
+                    public Mono<Long> write(PatientChange change) {
+                        return Mono.just(1L);
+                    }
+                },
                 new AlertWriter(client) {
                     @Override
                     public Mono<Void> recordFor(PatientChange applied) {
@@ -76,8 +85,8 @@ class PostgresMedicalAlertRepositoryIntegrationTest {
                 });
         backfilledPatient = escalate(register(TriageLevel.URGENT, 30)).getId();
         flyway.target("latest").load().migrate();
-        patients = new PostgresPatientRepository(client, transactions, new OutboxWriter(client),
-                new AlertWriter(client));
+        patients = new PostgresPatientRepository(client, transactions,
+                new OutboxWriter(client, Tracer.NOOP, Propagator.NOOP), new AlertWriter(client));
 
         listener = new AlertChangeListener(connectionFactory(), client, Clock.systemUTC(),
                 new AlertChangeListener.ReconnectBackoff(Duration.ofMillis(100), Duration.ofMillis(500)));

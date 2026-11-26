@@ -6,6 +6,7 @@ import com.vidacruz.assistant.model.answer.gateways.AnswerGenerator;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.RetryRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -22,18 +23,23 @@ import org.springframework.context.annotation.Configuration;
 public class ClaudeConfig {
 
     @Bean
-    public AnswerGenerator answerGenerator(ClaudeProperties properties, CircuitBreakerRegistry circuitBreakers,
-                                           RetryRegistry retries, TimeLimiterRegistry timeLimiters) {
+    public AnswerGenerator answerGenerator(ClaudeProperties properties, ClaudeResilience resilience) {
         if (!properties.hasApiKey()) {
             log.warn("ANTHROPIC_API_KEY is not set: the clinical assistant answers questions that need the model "
                     + "as unavailable");
             return new UnavailableAnswerGenerator();
         }
+        return new ClaudeAnswerGenerator(anthropicClient(properties), properties, resilience);
+    }
+
+    @Bean
+    public ClaudeResilience claudeResilience(CircuitBreakerRegistry circuitBreakers, RetryRegistry retries,
+                                             TimeLimiterRegistry timeLimiters, MeterRegistry meterRegistry) {
         var resilience = new ClaudeResilience(retries.retry(ClaudeResilience.INSTANCE),
                 circuitBreakers.circuitBreaker(ClaudeResilience.INSTANCE),
-                timeLimiters.timeLimiter(ClaudeResilience.INSTANCE));
+                timeLimiters.timeLimiter(ClaudeResilience.INSTANCE), new LlmCallMetrics(meterRegistry));
         logResilienceEvents(resilience);
-        return new ClaudeAnswerGenerator(anthropicClient(properties), properties, resilience);
+        return resilience;
     }
 
     static AnthropicClientAsync anthropicClient(ClaudeProperties properties) {

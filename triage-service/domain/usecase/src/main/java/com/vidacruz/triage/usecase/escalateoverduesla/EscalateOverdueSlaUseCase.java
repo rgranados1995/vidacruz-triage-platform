@@ -1,5 +1,6 @@
 package com.vidacruz.triage.usecase.escalateoverduesla;
 
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.gateways.PatientRepository;
 import com.vidacruz.triage.model.triage.SlaMonitorPolicy;
@@ -19,6 +20,7 @@ public class EscalateOverdueSlaUseCase {
     private final PatientRepository patientRepository;
     private final SlaMonitorPolicy policy;
     private final Clock clock;
+    private final TriageMetrics metrics;
 
     /** Emits how many patients were escalated in this round. */
     public Mono<Long> escalateOverdue() {
@@ -26,6 +28,7 @@ public class EscalateOverdueSlaUseCase {
                 .flatMapMany(now -> patientRepository.findOverdue(now, policy.batchSize())
                         .filter(patient -> patient.isOverdue(now))
                         .concatMap(patient -> patientRepository.escalate(PatientChange.escalation(patient, now))))
+                .doOnNext(escalated -> metrics.patientEscalated(escalated.getTriageLevel()))
                 .count();
     }
 }

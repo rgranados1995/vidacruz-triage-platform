@@ -6,7 +6,10 @@ import com.vidacruz.assistant.model.answer.AnswerOutcome;
 import com.vidacruz.assistant.model.answer.ClinicalAnswer;
 import com.vidacruz.assistant.model.answer.GroundedAnswer;
 import com.vidacruz.assistant.model.answer.Source;
+import com.vidacruz.assistant.model.exception.BusinessError;
+import com.vidacruz.assistant.model.exception.BusinessException;
 import com.vidacruz.assistant.usecase.answerclinicalquestion.AnswerClinicalQuestionUseCase;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -34,6 +37,8 @@ class ConsultationHandlerTest {
     @Mock
     private AnswerClinicalQuestionUseCase answerClinicalQuestion;
 
+    private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+
     @Test
     void shouldAnswerAndLogTheOutcomeButNotTheQuestion(CapturedOutput output) {
         when(answerClinicalQuestion.answer(QUESTION)).thenReturn(Mono.just(new GroundedAnswer(
@@ -46,6 +51,29 @@ class ConsultationHandlerTest {
 
         assertThat(output).contains("Clinical question answered", "outcome=\"ANSWERED\"", "sources=\"1\"")
                 .doesNotContain("Juan Pérez", "190/125");
+        assertThat(answers("answered")).isEqualTo(1.0);
+        assertThat(answers("unsupported_answer")).isZero();
+    }
+
+    @Test
+    void shouldCountTheQuestionsAnsweredInDegradedMode() {
+        when(answerClinicalQuestion.answer(QUESTION)).thenReturn(Mono.error(
+                new BusinessException(BusinessError.ASSISTANT_UNAVAILABLE, "")));
+
+        StepVerifier.create(handler().consult(request(QUESTION))).verifyError(BusinessException.class);
+
+        assertThat(answers(ConsultationMetrics.UNAVAILABLE)).isEqualTo(1.0);
+        assertThat(answers("answered")).isZero();
+    }
+
+    @Test
+    void shouldNotCountAnInvalidRequestAsDegraded() {
+        when(answerClinicalQuestion.answer(QUESTION)).thenReturn(Mono.error(
+                new BusinessException(BusinessError.INVALID_QUESTION, "")));
+
+        StepVerifier.create(handler().consult(request(QUESTION))).verifyError(BusinessException.class);
+
+        assertThat(answers(ConsultationMetrics.UNAVAILABLE)).isZero();
     }
 
     @Test
@@ -56,6 +84,7 @@ class ConsultationHandlerTest {
         StepVerifier.create(handler().consult(request(QUESTION))).expectNextCount(1).verifyComplete();
 
         assertThat(output).contains("WARN").contains("outcome=\"UNSUPPORTED_ANSWER\"");
+        assertThat(answers("unsupported_answer")).isEqualTo(1.0);
     }
 
     @Test
@@ -77,7 +106,12 @@ class ConsultationHandlerTest {
     }
 
     private ConsultationHandler handler() {
-        return new ConsultationHandler(answerClinicalQuestion);
+        return new ConsultationHandler(answerClinicalQuestion, new ConsultationMetrics(registry));
+    }
+
+    private double answers(String outcome) {
+        return registry.get(ConsultationMetrics.ANSWERS).tag(ConsultationMetrics.OUTCOME_TAG, outcome).counter()
+                .count();
     }
 
     private static MockServerRequest request(String question) {

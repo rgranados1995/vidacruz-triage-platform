@@ -2,6 +2,7 @@ package com.vidacruz.triage.usecase.registerpatient;
 
 import com.vidacruz.triage.model.audit.PatientEventType;
 import com.vidacruz.triage.model.exception.InvalidPatientDataException;
+import com.vidacruz.triage.model.metrics.gateways.TriageMetrics;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.PatientIntake;
 import com.vidacruz.triage.model.patient.PatientStatus;
@@ -54,6 +55,8 @@ class RegisterPatientUseCaseTest {
 
     @Mock
     private PatientRepository patientRepository;
+    @Mock
+    private TriageMetrics metrics;
 
     private RegisterPatientUseCase useCase;
 
@@ -63,7 +66,7 @@ class RegisterPatientUseCaseTest {
                 TriageLevel.NON_URGENT, 60, TriageLevel.NON_URGENT_2, 120));
         var classifier = new TriageClassifier(new AdministrativeComplaints(List.of("renovación de recetario")));
         useCase = new RegisterPatientUseCase(patientRepository, new PatientDataValidator(), classifier, sla,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), metrics);
     }
 
     @Test
@@ -91,6 +94,7 @@ class RegisterPatientUseCaseTest {
         assertThat(stored.getValue().auditEntry().eventType()).isEqualTo(PatientEventType.REGISTERED);
         assertThat(stored.getValue().auditEntry().newStatus()).isEqualTo(PatientStatus.REGISTERED);
         assertThat(stored.getValue().auditEntry().occurredAt()).isEqualTo(NOW);
+        verify(metrics).patientClassified(TriageLevel.CRITICAL);
     }
 
     @Test
@@ -125,7 +129,7 @@ class RegisterPatientUseCaseTest {
                                         .containsExactly(PatientField.FULL_NAME, PatientField.AGE)))
                 .verify();
 
-        verifyNoInteractions(patientRepository);
+        verifyNoInteractions(patientRepository, metrics);
     }
 
     @Test
@@ -136,5 +140,7 @@ class RegisterPatientUseCaseTest {
         StepVerifier.create(useCase.register(CHEST_PAIN))
                 .expectErrorMatches(error -> error == failure)
                 .verify();
+
+        verifyNoInteractions(metrics);
     }
 }
