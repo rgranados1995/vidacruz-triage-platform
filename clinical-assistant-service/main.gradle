@@ -10,6 +10,10 @@ allprojects {
 }
 
 subprojects {
+    // Where the Spring Boot plugin manages the versions (app-service), its rule would bring Testcontainers back
+    // to 1.21.3: the property overrides the version of the Boot BOM too
+    ext['testcontainers.version'] = testcontainersVersion
+
     apply plugin: 'java'
     apply plugin: 'jacoco'
     apply plugin: 'io.spring.dependency-management'
