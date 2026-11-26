@@ -65,9 +65,15 @@ report:
   # Longest range of the operation report: bounds the cost of the query and the rows of the answer (one per hour)
   max-range: ${REPORT_MAX_RANGE}
 
+alerts:
+  stream:
+    # Comment sent on an idle alert stream so proxies and load balancers do not close it
+    heartbeat: ${ALERTS_HEARTBEAT_INTERVAL}
+
 routes:
   patients: /triage/pacientes
   operation-report: /triage/reportes/operacion
+  alerts: /triage/alertas
 
 security:
   api-key: ${API_KEY}

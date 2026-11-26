@@ -1,5 +1,6 @@
 package com.vidacruz.triage.config;
 
+import com.vidacruz.triage.model.alert.gateways.MedicalAlertRepository;
 import com.vidacruz.triage.model.outbox.OutboxRelayPolicy;
 import com.vidacruz.triage.model.outbox.gateways.EventPublisher;
 import com.vidacruz.triage.model.outbox.gateways.OutboxRepository;
@@ -12,6 +13,9 @@ import com.vidacruz.triage.usecase.changepatientstatus.ChangePatientStatusUseCas
 import com.vidacruz.triage.usecase.escalateoverduesla.EscalateOverdueSlaUseCase;
 import com.vidacruz.triage.usecase.getoperationreport.GetOperationReportUseCase;
 import com.vidacruz.triage.usecase.getpatient.GetPatientUseCase;
+import com.vidacruz.triage.usecase.medicalalerts.AcknowledgeAlertUseCase;
+import com.vidacruz.triage.usecase.medicalalerts.ListActiveAlertsUseCase;
+import com.vidacruz.triage.usecase.medicalalerts.WatchAlertsUseCase;
 import com.vidacruz.triage.usecase.publishpendingevents.PublishPendingEventsUseCase;
 import com.vidacruz.triage.usecase.registerpatient.RegisterPatientUseCase;
 import org.junit.jupiter.api.Test;
@@ -34,6 +38,7 @@ class UseCasesConfigTest {
             .withBean(OutboxRepository.class, () -> mock(OutboxRepository.class))
             .withBean(EventPublisher.class, () -> mock(EventPublisher.class))
             .withBean(OperationReportRepository.class, () -> mock(OperationReportRepository.class))
+            .withBean(MedicalAlertRepository.class, () -> mock(MedicalAlertRepository.class))
             .withPropertyValues(
                     "triage.sla-minutes.CRITICAL=5",
                     "triage.sla-minutes.URGENT=10",
@@ -55,7 +60,10 @@ class UseCasesConfigTest {
                 .hasSingleBean(GetPatientUseCase.class)
                 .hasSingleBean(PublishPendingEventsUseCase.class)
                 .hasSingleBean(EscalateOverdueSlaUseCase.class)
-                .hasSingleBean(GetOperationReportUseCase.class));
+                .hasSingleBean(GetOperationReportUseCase.class)
+                .hasSingleBean(ListActiveAlertsUseCase.class)
+                .hasSingleBean(WatchAlertsUseCase.class)
+                .hasSingleBean(AcknowledgeAlertUseCase.class));
     }
 
     @Test

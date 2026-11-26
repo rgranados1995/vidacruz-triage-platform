@@ -57,7 +57,8 @@ subprojects {
         // Declarative wiring (routes, OpenAPI, security chain): verified by the acceptance tests. Its mutants are
         // not measurable with Spring tests because the cached context keeps the unmutated beans.
         excludedClasses = ['*.PatientRouter', '*.PatientApiDocs', '*.ReportRouter', '*.ReportApiDocs',
-                           '*.ApiKeySecurityConfig', '*.OpenApiConfig', '*.KafkaProducerConfig']
+                           '*.AlertRouter', '*.AlertApiDocs', '*.ApiKeySecurityConfig', '*.OpenApiConfig',
+                           '*.KafkaProducerConfig', '*.AlertListenerConfig']
         // Integration tests start containers: running them once per mutant would take hours
         excludedTestClasses = ['*IntegrationTest']
         pitestVersion = '1.20.6'

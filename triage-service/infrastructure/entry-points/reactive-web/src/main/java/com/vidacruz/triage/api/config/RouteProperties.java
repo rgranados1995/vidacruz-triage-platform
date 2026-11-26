@@ -7,9 +7,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param patients        base path of the patients resource
  * @param operationReport path of the operation report (RF-05)
+ * @param alerts          base path of the escalation alerts (RF-06)
  */
 @ConfigurationProperties(prefix = "routes")
-public record RouteProperties(String patients, String operationReport) {
+public record RouteProperties(String patients, String operationReport, String alerts) {
 
     public String patient() {
         return patients + "/{id}";
@@ -17,5 +18,13 @@ public record RouteProperties(String patients, String operationReport) {
 
     public String patientStatus() {
         return patients + "/{id}/estado";
+    }
+
+    public String alertStream() {
+        return alerts + "/stream";
+    }
+
+    public String alertAcknowledgement() {
+        return alerts + "/{id}/reconocimiento";
     }
 }

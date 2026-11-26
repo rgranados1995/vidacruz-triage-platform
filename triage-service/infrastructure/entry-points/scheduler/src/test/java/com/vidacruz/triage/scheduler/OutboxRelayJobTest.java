@@ -46,6 +46,8 @@ class OutboxRelayJobTest {
 
         job.stop();
         assertThat(job.isRunning()).isFalse();
+        // A round already dispatched when stop() was called may still run: what must not happen is a new one
+        verify(publishPendingEvents, after(50).atLeast(0)).publishPending();
         clearInvocations(publishPendingEvents);
         verify(publishPendingEvents, after(200).never()).publishPending();
     }

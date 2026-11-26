@@ -65,8 +65,8 @@ public final class ApiErrors {
     private static HttpStatus statusOf(BusinessError error) {
         return switch (error) {
             case INVALID_PATIENT_DATA, INVALID_REPORT_PERIOD -> HttpStatus.BAD_REQUEST;
-            case PATIENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_STATUS_TRANSITION -> HttpStatus.CONFLICT;
+            case PATIENT_NOT_FOUND, ALERT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case INVALID_STATUS_TRANSITION, ALERT_NOT_ACKNOWLEDGEABLE -> HttpStatus.CONFLICT;
         };
     }
 

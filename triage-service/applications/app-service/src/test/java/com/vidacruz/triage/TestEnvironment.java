@@ -51,6 +51,7 @@ final class TestEnvironment {
         registry.add("OUTBOX_BATCH_SIZE", () -> "50");
         registry.add("OUTBOX_LEASE", () -> "10s");
         registry.add("REPORT_MAX_RANGE", () -> "31d");
+        registry.add("ALERTS_HEARTBEAT_INTERVAL", () -> "200ms");
         registry.add("DB_HOST", POSTGRES::getHost);
         registry.add("DB_PORT", () -> POSTGRES.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT));
         registry.add("DB_NAME", POSTGRES::getDatabaseName);

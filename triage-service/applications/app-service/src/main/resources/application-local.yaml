@@ -35,6 +35,10 @@ outbox:
 report:
   max-range: 31d
 
+alerts:
+  stream:
+    heartbeat: 15s
+
 triage:
   sla-minutes:
     CRITICAL: 5

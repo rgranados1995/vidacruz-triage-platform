@@ -91,6 +91,7 @@ services:
       OUTBOX_BATCH_SIZE: 100
       OUTBOX_LEASE: 30s
       REPORT_MAX_RANGE: 31d
+      ALERTS_HEARTBEAT_INTERVAL: 15s
     ports:
       - "8081:8081"
     depends_on:

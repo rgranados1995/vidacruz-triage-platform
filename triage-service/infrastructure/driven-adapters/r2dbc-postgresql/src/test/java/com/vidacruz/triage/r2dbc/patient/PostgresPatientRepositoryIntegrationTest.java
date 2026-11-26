@@ -9,6 +9,7 @@ import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.PatientStatus;
 import com.vidacruz.triage.model.patient.VitalSigns;
 import com.vidacruz.triage.model.triage.TriageLevel;
+import com.vidacruz.triage.r2dbc.alert.AlertWriter;
 import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
 import io.r2dbc.postgresql.PostgresqlConnectionFactory;
@@ -74,7 +75,8 @@ class PostgresPatientRepositoryIntegrationTest {
     void setUp() {
         client = DatabaseClient.create(connectionFactory);
         var transactions = TransactionalOperator.create(new R2dbcTransactionManager(connectionFactory));
-        repository = new PostgresPatientRepository(client, transactions, new OutboxWriter(client));
+        repository = new PostgresPatientRepository(client, transactions, new OutboxWriter(client),
+                new AlertWriter(client));
     }
 
     @Test

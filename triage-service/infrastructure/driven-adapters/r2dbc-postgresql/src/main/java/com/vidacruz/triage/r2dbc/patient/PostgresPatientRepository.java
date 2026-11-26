@@ -6,6 +6,7 @@ import com.vidacruz.triage.model.exception.BusinessException;
 import com.vidacruz.triage.model.patient.Patient;
 import com.vidacruz.triage.model.patient.PatientChange;
 import com.vidacruz.triage.model.patient.gateways.PatientRepository;
+import com.vidacruz.triage.r2dbc.alert.AlertWriter;
 import com.vidacruz.triage.r2dbc.outbox.OutboxWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -18,9 +19,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * PostgreSQL storage of patients over R2DBC. Each change, its audit entry and its outbox event are written in one
- * transaction, and a change applies only if nobody changed the status in between (the stored status is part of the
- * update condition).
+ * PostgreSQL storage of patients over R2DBC. Each change, its audit entry, its outbox event and its alert are written
+ * in one transaction, and a change applies only if nobody changed the status in between (the stored status is part of
+ * the update condition).
  */
 @Repository
 @RequiredArgsConstructor
@@ -31,6 +32,7 @@ public class PostgresPatientRepository implements PatientRepository {
     private final DatabaseClient client;
     private final TransactionalOperator transactionalOperator;
     private final OutboxWriter outboxWriter;
+    private final AlertWriter alertWriter;
 
     @Override
     public Mono<Patient> register(PatientChange registration) {
@@ -78,10 +80,11 @@ public class PostgresPatientRepository implements PatientRepository {
                 .one();
     }
 
-    /** Audit entry and outbox event of an applied change, inside the transaction of the caller. */
+    /** Audit entry, outbox event and alert of an applied change, inside the transaction of the caller. */
     private Mono<Patient> record(PatientChange applied) {
         return insertAudit(applied.auditEntry())
                 .then(outboxWriter.write(applied))
+                .then(alertWriter.recordFor(applied))
                 .thenReturn(applied.patient());
     }
 

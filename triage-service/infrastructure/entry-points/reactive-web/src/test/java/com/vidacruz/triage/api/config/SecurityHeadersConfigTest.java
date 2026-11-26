@@ -35,9 +35,11 @@ class SecurityHeadersConfigTest {
 
     @Test
     void shouldBuildThePathsOfThePatientResource() {
-        var routes = new RouteProperties("/triage/pacientes", "/triage/reportes/operacion");
+        var routes = new RouteProperties("/triage/pacientes", "/triage/reportes/operacion", "/triage/alertas");
 
         assertThat(routes.patient()).isEqualTo("/triage/pacientes/{id}");
         assertThat(routes.patientStatus()).isEqualTo("/triage/pacientes/{id}/estado");
+        assertThat(routes.alertStream()).isEqualTo("/triage/alertas/stream");
+        assertThat(routes.alertAcknowledgement()).isEqualTo("/triage/alertas/{id}/reconocimiento");
     }
 }
