@@ -37,6 +37,13 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         defaultCharacterEncoding = 'UTF-8'
+        // A failing test shows its whole exception and causes in the console (the CI log), not only its class
+        testLogging {
+            events 'failed'
+            exceptionFormat = 'full'
+            showCauses = true
+            showStackTraces = true
+        }
     }
 
     dependencies {
