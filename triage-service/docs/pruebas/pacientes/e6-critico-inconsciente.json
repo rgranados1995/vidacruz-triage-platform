@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Paciente sin identificar",
+  "edad": 45,
+  "frecuenciaCardiaca": 35,
+  "presionSistolica": 80,
+  "presionDiastolica": 50,
+  "spo2": 85,
+  "temperatura": 35.9,
+  "dolor": 0,
+  "gcs": 6,
+  "quejaPrincipal": "Inconsciente"
+}

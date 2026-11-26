@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Jorge Ramírez",
+  "edad": 35,
+  "frecuenciaCardiaca": 72,
+  "presionSistolica": 120,
+  "presionDiastolica": 80,
+  "spo2": 99,
+  "temperatura": 36.5,
+  "dolor": 2,
+  "gcs": 15,
+  "quejaPrincipal": "Herida por cortar"
+}

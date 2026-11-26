@@ -1,0 +1,8 @@
+# Demo override: SLA of 1 minute for CRITICO and a monitor round every 5 seconds, to watch the escalation and the
+# alert without waiting 5 minutes. Use it on top of the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+services:
+  triage-service:
+    environment:
+      SLA_MINUTES_CRITICAL: 1
+      SLA_MONITOR_INTERVAL: 5s

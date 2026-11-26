@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Carlos Gómez Ruiz",
+  "edad": 61,
+  "frecuenciaCardiaca": 95,
+  "presionSistolica": 150,
+  "presionDiastolica": 95,
+  "spo2": 91,
+  "temperatura": 37.0,
+  "dolor": 4,
+  "gcs": 15,
+  "quejaPrincipal": "Dificultad para respirar"
+}

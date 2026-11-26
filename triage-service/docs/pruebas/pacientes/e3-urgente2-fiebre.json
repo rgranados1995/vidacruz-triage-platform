@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Lucía Fernández",
+  "edad": 29,
+  "frecuenciaCardiaca": 88,
+  "presionSistolica": 130,
+  "presionDiastolica": 85,
+  "spo2": 98,
+  "temperatura": 38.2,
+  "dolor": 6,
+  "gcs": 15,
+  "quejaPrincipal": "Fiebre"
+}

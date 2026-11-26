@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Ana María Pérez",
+  "edad": 54,
+  "frecuenciaCardiaca": 130,
+  "presionSistolica": 180,
+  "presionDiastolica": 110,
+  "spo2": 97,
+  "temperatura": 36.8,
+  "dolor": 8,
+  "gcs": 15,
+  "quejaPrincipal": "Dolor torácico"
+}

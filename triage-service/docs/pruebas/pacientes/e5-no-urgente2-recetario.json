@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Marta Silva",
+  "edad": 70,
+  "frecuenciaCardiaca": 70,
+  "presionSistolica": 115,
+  "presionDiastolica": 75,
+  "spo2": 99,
+  "temperatura": 36.4,
+  "dolor": 0,
+  "gcs": 15,
+  "quejaPrincipal": "Renovación de recetario"
+}

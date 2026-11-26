@@ -1,0 +1,12 @@
+{
+  "nombreCompleto": "Al",
+  "edad": 130,
+  "frecuenciaCardiaca": 300,
+  "presionSistolica": 120,
+  "presionDiastolica": 130,
+  "spo2": 99,
+  "temperatura": 36.5,
+  "dolor": 2,
+  "gcs": 15,
+  "quejaPrincipal": "Control"
+}
