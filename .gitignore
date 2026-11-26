@@ -1,6 +1,13 @@
 # Local secrets
 .env
 
+# Personal work log of the author and its generator (kept only on the author's machine)
+bitacora/
+node_modules/
+
+# Local settings of the coding assistant
+.claude/
+
 # IDE and OS
 .idea/
 *.iml
