@@ -1,0 +1,26 @@
+dependencies {
+    implementation project(':model')
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework.boot:spring-boot'
+    implementation 'org.slf4j:slf4j-api'
+    implementation platform("org.springframework.ai:spring-ai-bom:${springAiVersion}")
+    implementation 'org.springframework.ai:spring-ai-vector-store'
+    implementation('org.springframework.ai:spring-ai-transformers') {
+        // Only ONNX Runtime is used: the PyTorch engine would download native libraries at runtime
+        exclude group: 'ai.djl.pytorch'
+        exclude group: 'ai.djl', module: 'model-zoo'
+    }
+}
+
+test {
+    dependsOn rootProject.tasks.named('downloadEmbeddingModel')
+    systemProperty 'embedding.model.dir', rootProject.ext.embeddingModelDir.absolutePath
+}
+
+// The mutation tests run the real search too
+pitest {
+    jvmArgs.add("-Dembedding.model.dir=${rootProject.ext.embeddingModelDir.absolutePath}")
+}
+tasks.named('pitest') {
+    dependsOn rootProject.tasks.named('downloadEmbeddingModel')
+}

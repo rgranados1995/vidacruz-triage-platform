@@ -1,6 +1,29 @@
 server:
   port: 8082
 
+adapters:
+  claude:
+    # Local runs read the key of the developer from the environment; without it the assistant runs degraded
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: claude-opus-5-5
+    effort: medium
+    timeout: 20s
+  protocol-corpus:
+    top-k: 3
+    similarity-threshold: 0.50
+    # Downloaded by ./gradlew downloadEmbeddingModel
+    embedding-model: file:${user.home}/.gradle/caches/vidacruz/paraphrase-multilingual-MiniLM-L12-v2-e8f8c21/model.onnx
+    embedding-tokenizer: file:${user.home}/.gradle/caches/vidacruz/paraphrase-multilingual-MiniLM-L12-v2-e8f8c21/tokenizer.json
+
+security:
+  api-key: local-dev-assistant-key-0001
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 logging:
   level:
     root: INFO

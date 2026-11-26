@@ -10,6 +10,35 @@ spring:
   reactor:
     context-propagation: auto
 
+adapters:
+  claude:
+    # Blank: the service starts and the questions that need the model are answered with 503 (degraded mode)
+    api-key: ${ANTHROPIC_API_KEY}
+    base-url: https://api.anthropic.com
+    model: ${LLM_MODEL}
+    effort: ${LLM_EFFORT}
+    max-tokens: 2048
+    timeout: ${LLM_TIMEOUT}
+  protocol-corpus:
+    top-k: ${RAG_TOP_K}
+    similarity-threshold: ${RAG_SIMILARITY_THRESHOLD}
+    embedding-model: ${EMBEDDING_MODEL_URI}
+    embedding-tokenizer: ${EMBEDDING_TOKENIZER_URI}
+
+routes:
+  consultation: /asistente/consulta
+
+security:
+  api-key: ${ASSISTANT_API_KEY}
+
+springdoc:
+  # Builds the OpenAPI document at startup: building it on the first request scans the classpath on a Netty thread
+  pre-loading-enabled: true
+  api-docs:
+    enabled: ${API_DOCS_ENABLED}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED}
+
 logging:
   structured:
     format:

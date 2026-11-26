@@ -109,6 +109,15 @@ services:
       SERVER_PORT: 8082
       LOG_LEVEL: INFO
       TRACING_SAMPLING_PROBABILITY: "1.0"
+      ASSISTANT_API_KEY: ${ASSISTANT_API_KEY:-local-dev-assistant-key-0001}
+      API_DOCS_ENABLED: "true"
+      # Without a key in .env the assistant starts in degraded mode (503 for the questions that need the model)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: claude-opus-5-5
+      LLM_EFFORT: medium
+      LLM_TIMEOUT: 20s
+      RAG_TOP_K: 3
+      RAG_SIMILARITY_THRESHOLD: "0.50"
     ports:
       - "8082:8082"
     depends_on:

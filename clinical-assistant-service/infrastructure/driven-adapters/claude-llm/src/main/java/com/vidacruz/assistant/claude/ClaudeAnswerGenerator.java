@@ -1,0 +1,91 @@
+package com.vidacruz.assistant.claude;
+
+import com.anthropic.client.AnthropicClientAsync;
+import com.anthropic.errors.AnthropicInvalidDataException;
+import com.anthropic.models.beta.AnthropicBeta;
+import com.anthropic.models.beta.messages.BetaOutputConfig;
+import com.anthropic.models.beta.messages.BetaRefusalStopDetails;
+import com.anthropic.models.beta.messages.BetaStopReason;
+import com.anthropic.models.beta.messages.MessageCreateParams;
+import com.anthropic.models.beta.messages.StructuredMessage;
+import com.anthropic.models.beta.messages.StructuredMessageCreateParams;
+import com.vidacruz.assistant.model.answer.ExcerptSet;
+import com.vidacruz.assistant.model.answer.GeneratedAnswer;
+import com.vidacruz.assistant.model.answer.gateways.AnswerGenerator;
+import com.vidacruz.assistant.model.exception.BusinessError;
+import com.vidacruz.assistant.model.exception.BusinessException;
+import com.vidacruz.assistant.model.question.ClinicalQuestion;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
+
+/**
+ * Drafts the answer with Claude through the official Anthropic SDK, asynchronously (no thread waits for the API).
+ * The answer comes back as structured JSON ({@link ModelAnswer}); server-side fallbacks are on, so a request refused
+ * by one model is retried by the API on another. Whatever the model returns is checked afterwards against the
+ * excerpts (RN-05); here a refusal or an unreadable answer only becomes an answer without content.
+ */
+@Slf4j
+public class ClaudeAnswerGenerator implements AnswerGenerator {
+
+    private static final GeneratedAnswer UNREADABLE = new GeneratedAnswer(false, "", List.of());
+
+    private final AnthropicClientAsync client;
+    private final ClaudeProperties properties;
+
+    public ClaudeAnswerGenerator(AnthropicClientAsync client, ClaudeProperties properties) {
+        this.client = client;
+        this.properties = properties;
+    }
+
+    @Override
+    public Mono<GeneratedAnswer> generate(ClinicalQuestion question, ExcerptSet excerpts) {
+        return Mono.fromCallable(() -> request(question, excerpts))
+                .flatMap(request -> Mono.fromFuture(() -> client.beta().messages().create(request), true))
+                .doOnNext(this::logAnswer)
+                .map(ClaudeAnswerGenerator::toGenerated)
+                .onErrorResume(AnthropicInvalidDataException.class, error -> {
+                    log.atWarn().setCause(error).log("Claude answer could not be read");
+                    return Mono.just(UNREADABLE);
+                })
+                // Any other failure (HTTP status, timeout, connection) means the model cannot be reached now
+                .onErrorMap(error -> new BusinessException(BusinessError.ASSISTANT_UNAVAILABLE, "", error));
+    }
+
+    private StructuredMessageCreateParams<ModelAnswer> request(ClinicalQuestion question, ExcerptSet excerpts) {
+        return MessageCreateParams.builder()
+                .outputConfig(ModelAnswer.class, BetaOutputConfig.Effort.of(properties.effort()))
+                .model(properties.model())
+                .maxTokens(properties.maxTokens())
+                .system(ClaudePrompt.SYSTEM)
+                .addUserMessage(ClaudePrompt.userMessage(question, excerpts))
+                .addBeta(AnthropicBeta.SERVER_SIDE_FALLBACK_2026_07_01)
+                .fallbacksDefault()
+                .build();
+    }
+
+    /** A refusal, or an answer without text, carries no clinical content. */
+    static GeneratedAnswer toGenerated(StructuredMessage<ModelAnswer> message) {
+        if (message.stopReason().filter(BetaStopReason.REFUSAL::equals).isPresent()) {
+            return GeneratedAnswer.declined();
+        }
+        for (var block : message.content()) {
+            var text = block.text();
+            if (text.isPresent()) {
+                var answer = text.get().text();
+                return new GeneratedAnswer(answer.noProtocol(), answer.answer(), answer.excerptIds());
+            }
+        }
+        return UNREADABLE;
+    }
+
+    private void logAnswer(StructuredMessage<ModelAnswer> message) {
+        log.atInfo()
+                .addKeyValue("model", properties.model())
+                .addKeyValue("stopReason", message.stopReason().map(Object::toString).orElse(""))
+                .addKeyValue("refusalCategory", message.stopDetails()
+                        .flatMap(BetaRefusalStopDetails::category).map(Object::toString).orElse(""))
+                .log("Claude answered");
+    }
+}

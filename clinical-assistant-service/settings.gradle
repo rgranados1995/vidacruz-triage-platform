@@ -18,3 +18,9 @@ include ':usecase'
 project(':app-service').projectDir = file('./applications/app-service')
 project(':model').projectDir = file('./domain/model')
 project(':usecase').projectDir = file('./domain/usecase')
+include ':reactive-web'
+project(':reactive-web').projectDir = file('./infrastructure/entry-points/reactive-web')
+include ':protocol-corpus'
+project(':protocol-corpus').projectDir = file('./infrastructure/driven-adapters/protocol-corpus')
+include ':claude-llm'
+project(':claude-llm').projectDir = file('./infrastructure/driven-adapters/claude-llm')

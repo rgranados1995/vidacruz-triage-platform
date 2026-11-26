@@ -54,8 +54,11 @@ subprojects {
 
     pitest {
         targetClasses = ['com.vidacruz.assistant.*']
-        excludedClasses = []
-        excludedTestClasses = []
+        // Declarative wiring (routes, OpenAPI, security chain): verified by the acceptance tests. Its mutants are
+        // not measurable with Spring tests because the cached context keeps the unmutated beans.
+        excludedClasses = ['*.ConsultationRouter', '*.ConsultationApiDocs', '*.ApiKeySecurityConfig', '*.OpenApiConfig']
+        // Integration tests start the whole application: running them once per mutant would take too long
+        excludedTestClasses = ['*IntegrationTest']
         pitestVersion = '1.20.6'
         verbose = false
         outputFormats = ['XML', 'HTML']
@@ -138,6 +141,41 @@ pitestReportAggregate {
                 }
             }
             writer.write("</mutations>")
+        }
+    }
+}
+
+// Multilingual sentence embeddings of the protocol search: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+// (Apache-2.0), int8 for AVX2. Pinned by commit and checked by SHA-256; downloaded once to the Gradle user home for
+// the tests (the Docker image downloads the same files with the same checks).
+def embeddingModelRevision = 'e8f8c211226b894fcb81acc59f3b34ba3efd5f42'
+ext.embeddingModelDir = new File(gradle.gradleUserHomeDir,
+        "caches/vidacruz/paraphrase-multilingual-MiniLM-L12-v2-${embeddingModelRevision.take(7)}")
+
+tasks.register('downloadEmbeddingModel') {
+    def dir = embeddingModelDir
+    def baseUrl = "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/${embeddingModelRevision}"
+    def files = [
+            'model.onnx'    : ['onnx/model_quint8_avx2.onnx', '98a01d88b7de996cdea58c32ca71208c09968d143798814b2ea09d3439dc334f'],
+            'tokenizer.json': ['tokenizer.json', '2c3387be76557bd40970cec13153b3bbf80407865484b209e655e5e4729076b8']
+    ]
+    outputs.dir(dir)
+    doLast {
+        def sha256 = { File file ->
+            def digest = java.security.MessageDigest.getInstance('SHA-256')
+            file.withInputStream { stream -> stream.eachByte(1 << 16) { bytes, length -> digest.update(bytes, 0, length) } }
+            digest.digest().encodeHex().toString()
+        }
+        dir.mkdirs()
+        files.each { name, spec ->
+            def target = new File(dir, name)
+            if (!target.exists() || sha256(target) != spec[1]) {
+                new URL("${baseUrl}/${spec[0]}").withInputStream { input -> target.withOutputStream { it << input } }
+                if (sha256(target) != spec[1]) {
+                    target.delete()
+                    throw new GradleException("Checksum mismatch for ${name} of the embedding model")
+                }
+            }
         }
     }
 }

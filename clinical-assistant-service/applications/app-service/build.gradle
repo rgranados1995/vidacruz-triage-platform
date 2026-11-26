@@ -1,6 +1,9 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
+	implementation project(':claude-llm')
+	implementation project(':protocol-corpus')
+	implementation project(':reactive-web')
     implementation project(':model')
     implementation project(':usecase')
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -10,6 +13,12 @@ dependencies {
     runtimeOnly('org.springframework.boot:spring-boot-devtools')
     testImplementation 'com.tngtech.archunit:archunit:1.4.1'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation "org.wiremock:wiremock-standalone:${wiremockVersion}"
+}
+
+test {
+    dependsOn rootProject.tasks.named('downloadEmbeddingModel')
+    systemProperty 'embedding.model.dir', rootProject.ext.embeddingModelDir.absolutePath
 }
 
 tasks.register('explodedJar', Copy) {
@@ -26,4 +35,3 @@ bootJar {
     // Sets output jar name
     archiveFileName = "${project.getParent().getName()}.${archiveExtension.get()}"
 }
-
