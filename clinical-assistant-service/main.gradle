@@ -26,6 +26,15 @@ subprojects {
         useJUnitPlatform()
     }
 
+    // Sources, tests and messages are UTF-8 (Spanish accents) whatever the default charset of the machine is
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Test).configureEach {
+        defaultCharacterEncoding = 'UTF-8'
+    }
+
     dependencies {
         implementation 'io.projectreactor:reactor-core'
         implementation 'io.projectreactor.addons:reactor-extra'
@@ -40,6 +49,9 @@ subprojects {
         testCompileOnly  "org.projectlombok:lombok:${lombokVersion}"
         testAnnotationProcessor  "org.projectlombok:lombok:${lombokVersion}"
         implementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+        // Testcontainers 1.21.3 (managed by Spring Boot 3.5.7) speaks Docker API 1.32, which recent Docker
+        // engines reject (minimum 1.40, as on the GitHub runners); 1.21.4 negotiates a supported version
+        testImplementation platform("org.testcontainers:testcontainers-bom:${testcontainersVersion}")
     }
 
     tasks.withType(Test).configureEach {
@@ -70,7 +82,7 @@ subprojects {
         fileExtensionsToFilter.addAll('xml', 'orbit')
         junit5PluginVersion = '1.2.3'
         failWhenNoMutations = false
-        jvmArgs = ["-XX:+AllowRedefinitionToAddDeleteMethods"]
+        jvmArgs = ["-XX:+AllowRedefinitionToAddDeleteMethods", "-Dfile.encoding=UTF-8"]
     }
 
     // Mutation tests run on demand (./gradlew pitest pitestReportAggregate), not on every build

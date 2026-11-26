@@ -8,6 +8,9 @@ node_modules/
 # Local settings of the coding assistant
 .claude/
 
+# Regenerated on every build by the Clean Architecture plugin, with the absolute paths of the machine that builds
+**/applications/app-service/src/test/java/**/ArchitectureTest.java
+
 # IDE and OS
 .idea/
 *.iml

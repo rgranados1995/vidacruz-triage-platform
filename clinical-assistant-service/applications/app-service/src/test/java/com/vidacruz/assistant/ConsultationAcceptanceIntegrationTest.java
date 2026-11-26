@@ -82,6 +82,22 @@ class ConsultationAcceptanceIntegrationTest {
     }
 
     @Test
+    void shouldAnswerTheRehydrationOfAChildWithProto003() throws Exception {
+        modelAnswers(false, "En la deshidratación severa se rehidrata por vía intravenosa con un bolo de 20 ml/kg.",
+                List.of("E1"));
+
+        consult("¿Cómo se rehidrata a un niño con deshidratación severa?").expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.fuentes.length()").isEqualTo(1)
+                .jsonPath("$.fuentes[0].protocolo").isEqualTo("PROTO-003");
+
+        // The closest section of the corpus, the one the model was asked to cite as E1, is of PROTO-003
+        ANTHROPIC.verify(postRequestedFor(urlPathEqualTo(MESSAGES))
+                .withRequestBody(matchingJsonPath("$.messages[0].content",
+                        containing("id=\"E1\" protocol=\"PROTO-003\""))));
+    }
+
+    @Test
     void shouldAnswerOnlyTheNoticeForDiabetesWithoutCallingTheModel() throws Exception {
         modelAnswers(false, "Metformina como primera línea.", List.of("E1"));
 

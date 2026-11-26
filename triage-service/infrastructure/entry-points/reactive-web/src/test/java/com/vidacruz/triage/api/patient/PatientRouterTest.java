@@ -146,13 +146,13 @@ class PatientRouterTest {
 
     @Test
     void shouldChangeTheStatusAndReturnTheDetail() {
-        when(changePatientStatus.changeStatus(ID, PatientStatus.IN_CONSULTATION))
-                .thenReturn(Mono.just(patient(PatientStatus.IN_CONSULTATION)));
+        when(changePatientStatus.changeStatus(ID, PatientStatus.IN_CONSULTATION)).thenReturn(Mono.just(
+                new PatientDetail(patient(PatientStatus.IN_CONSULTATION), Duration.ofMillis(4))));
 
         patch(ID.toString(), "{\"estado\": \"EN_CONSULTA\"}").expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.estado").isEqualTo("EN_CONSULTA")
-                .jsonPath("$.tiempoEnEstadoActual").isEqualTo("PT0S");
+                .jsonPath("$.tiempoEnEstadoActual").isEqualTo("PT0.004S");
     }
 
     @Test

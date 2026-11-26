@@ -230,8 +230,10 @@ Están en [`clinical-assistant-service/docs/pruebas/`](docs/pruebas). Protocolos
 | `consulta-diabetes-sin-protocolo.json` | ¿Cuál es el tratamiento de primera línea para la diabetes tipo 2? | 200 con el **aviso de que no existe protocolo** y `fuentes: []` | **Igual**: 200 con el aviso (no necesita a la IA) |
 | `consulta-invalida-corta.json` | `?` | 400 `AST-001` | 400 `AST-001` |
 
-Las tres primeras son las del enunciado más una del tercer protocolo; la de diabetes es el caso "sin coincidencia,
-sin alucinación".
+Las tres consultas de ejemplo del enunciado son la de crisis hipertensiva, la de sepsis y la de diabetes (el caso
+"sin coincidencia, sin alucinación"). La de deshidratación es nuestra, para cubrir también PROTO-003. Las cuatro tienen
+prueba automática de punta a punta (con la IA simulada), y la prueba `OfficialCorpusTest` fija que el corpus sea el del
+enunciado palabra por palabra.
 
 ## 8. Casos de uso paso a paso
 
@@ -440,6 +442,8 @@ Corre unas 190 pruebas, entre ellas:
 - la reconstrucción desde Kafka.
 
 Exige al menos 90 % de cobertura por módulo. La primera vez descarga el modelo de búsqueda.
+
+`ArchitectureTest.java` (reglas de ArchUnit de la arquitectura limpia) lo genera el plugin del scaffold en cada build, con las rutas de la máquina que compila; por eso no está en git, pero corre igual con las demás pruebas. Las pruebas también corren desde una carpeta con tildes en Windows (`gradle.properties` lo resuelve).
 
 Arquitectura limpia (scaffold de Bancolombia):
 

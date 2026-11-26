@@ -76,8 +76,8 @@ resilience4j:
         cancel-running-future: true
 
 errors:
-  # Retry-After of a 503: the time the circuit breaker stays open
-  unavailable-retry-after: 30s
+  # Retry-After of a 503: the time the circuit breaker stays open, read from its own setting so both never drift
+  unavailable-retry-after: ${resilience4j.circuitbreaker.instances.claude.wait-duration-in-open-state}
 
 routes:
   consultation: /asistente/consulta

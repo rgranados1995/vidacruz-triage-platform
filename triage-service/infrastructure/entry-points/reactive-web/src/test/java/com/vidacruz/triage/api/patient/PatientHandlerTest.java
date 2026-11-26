@@ -9,6 +9,7 @@ import com.vidacruz.triage.api.patient.dto.RegisterPatientRequest;
 import com.vidacruz.triage.usecase.changepatientstatus.ChangePatientStatusUseCase;
 import com.vidacruz.triage.usecase.getpatient.GetPatientUseCase;
 import com.vidacruz.triage.usecase.registerpatient.RegisterPatientUseCase;
+import com.vidacruz.triage.usecase.getpatient.PatientDetail;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,6 +23,7 @@ import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -67,7 +69,7 @@ class PatientHandlerTest {
     @Test
     void shouldAnswerOkAndLogTheStatusChange(CapturedOutput output) {
         when(changePatientStatus.changeStatus(ID, PatientStatus.DISCHARGED))
-                .thenReturn(Mono.just(patient(PatientStatus.DISCHARGED)));
+                .thenReturn(Mono.just(new PatientDetail(patient(PatientStatus.DISCHARGED), Duration.ZERO)));
         var request = MockServerRequest.builder()
                 .pathVariable(PatientHandler.ID_VARIABLE, ID.toString())
                 .body(Mono.just(new ChangeStatusRequest("ALTA")));

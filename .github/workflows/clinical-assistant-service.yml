@@ -28,10 +28,10 @@ jobs:
       run:
         working-directory: clinical-assistant-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The Gradle cache also keeps the embedding model of the tests (~/.gradle/caches/vidacruz), pinned by commit
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -45,7 +45,7 @@ jobs:
 
       - name: Keep the test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: clinical-assistant-service-test-reports
           path: clinical-assistant-service/**/build/reports/tests/

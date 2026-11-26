@@ -644,6 +644,8 @@ cd triage-service
 Corre unas 370 pruebas (unitarias, de integración y de aceptación por HTTP) y exige al menos 90 % de cobertura por
 módulo. Las pruebas de mutación son aparte: `./gradlew pitest pitestReportAggregate`.
 
+`ArchitectureTest.java` (reglas de ArchUnit de la arquitectura limpia) lo genera el plugin del scaffold en cada build, con las rutas de la máquina que compila; por eso no está en git, pero corre igual con las demás pruebas. Las pruebas también corren desde una carpeta con tildes en Windows (`gradle.properties` lo resuelve).
+
 Arquitectura limpia (scaffold de Bancolombia):
 
 | Módulo | Qué hay |

@@ -6,6 +6,7 @@ buildscript {
 		jacocoVersion = '0.8.14'
 		pitestVersion = '1.19.0-rc.2'
         lombokVersion = '1.18.42'
+        testcontainersVersion = '1.21.4'
         springdocVersion = '2.8.14'
         reactorKafkaVersion = '1.3.25'
 	}

@@ -40,8 +40,23 @@ Claude, con el **SDK oficial de Anthropic para Java** (cliente asíncrono, sin h
 **fallbacks del lado del servidor**: si un modelo rechaza la petición, la API la reintenta con otro. Un `refusal` que
 llegue igual se trata como respuesta sin contenido.
 
-Spring AI se usa para lo que el enunciado le pide al RAG: documentos, embeddings y vector store. La orquestación de
-la llamada al LLM vive en el caso de uso, porque ahí están las compuertas de RN-05.
+### 2.1 Spring AI en el RAG y SDK oficial para la generación
+
+El enunciado pide "Spring AI o LangChain4j" para el RAG. El RAG usa **Spring AI** en su parte de recuperación:
+`Document`, `TransformersEmbeddingModel`, `SimpleVectorStore` y la búsqueda por similitud con umbral
+(`VectorStoreProtocolRetriever`). La **generación** llama a Claude con el **SDK oficial de Anthropic**, detrás del
+gateway `AnswerGenerator`, y no con el `ChatModel` de Spring AI. Es una decisión consciente, porque RN-05 depende de
+tres cosas que el SDK da y el `ChatModel` de Spring AI 1.1 no daba al decidirlo:
+
+| Necesidad de RN-05 | SDK oficial | `ChatModel` de Spring AI |
+|---|---|---|
+| Respuesta con esquema obligatorio (`noProtocol`, `answer`, `excerptIds`), garantizado por la API | Structured outputs nativos | Conversión del texto a JSON con instrucciones en el prompt: el modelo puede no cumplirlo |
+| Fallback del lado del servidor si un modelo rechaza la petición | `fallbacksDefault()` | No disponible |
+| Esfuerzo del modelo configurable | `outputConfig(..., effort)` | No disponible |
+
+La orquestación (las compuertas) vive en el caso de uso, así que el cliente del LLM se puede cambiar: migrar al
+`ChatModel` de Spring AI cuando cubra esas tres cosas sería un adaptador nuevo detrás de `AnswerGenerator`, sin
+tocar el dominio ni las pruebas de las compuertas.
 
 ### 3. Embeddings locales
 
@@ -73,7 +88,7 @@ Medido el 2026-11-26 con el modelo real:
 
 | Opción | Por qué no |
 |---|---|
-| `ChatModel` de Spring AI para Anthropic | El SDK oficial está al día con structured outputs y fallbacks; las compuertas no dependen del cliente |
+| `ChatModel` de Spring AI para Anthropic | Sin structured outputs garantizados por la API, fallbacks ni esfuerzo (ver 2.1); queda como adaptador alternativo |
 | Embeddings de Voyage u OpenAI | Segunda llave y dependencia de red también para el camino "sin protocolo" |
 | pgvector | El asistente no tiene base relacional; sumaría una base solo para tres documentos |
 | Redis Stack (RediSearch) | El compose usa Redis 7.4 sin módulos; se reserva para la proyección del estado de urgencias |
@@ -90,3 +105,5 @@ Medido el 2026-11-26 con el modelo real:
   queda en manos del prompt y del modelo. Una evaluación periódica con preguntas reales es la evolución natural.
 - Cambiar de modelo o de esfuerzo es configuración (`LLM_MODEL`, `LLM_EFFORT`). Cambiar el modelo de embeddings exige
   recalibrar el umbral con la prueba `ProtocolCorpusSearchTest`.
+- El corpus es el del enunciado palabra por palabra, y lo fija la prueba `OfficialCorpusTest`: una sección editada
+  por error haría que el asistente cite un texto que el protocolo no dice.

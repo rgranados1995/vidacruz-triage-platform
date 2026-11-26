@@ -16,7 +16,6 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -50,8 +49,7 @@ public class PatientHandler {
                 .zipWith(requiredBody(request, ChangeStatusRequest.class)
                         .map(body -> ContractValues.statusFrom(body.status())))
                 .flatMap(target -> changePatientStatus.changeStatus(target.getT1(), target.getT2()))
-                .doOnNext(patient -> logChange("Patient status changed", patient))
-                .map(patient -> new PatientDetail(patient, Duration.ZERO))
+                .doOnNext(changed -> logChange("Patient status changed", changed.patient()))
                 .flatMap(PatientHandler::detail);
     }
 

@@ -18,6 +18,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -52,9 +53,10 @@ class ChangePatientStatusUseCaseTest {
                 .patient()));
 
         StepVerifier.create(useCase.changeStatus(PATIENT_ID, PatientStatus.IN_CONSULTATION))
-                .assertNext(patient -> {
-                    assertThat(patient.getStatus()).isEqualTo(PatientStatus.IN_CONSULTATION);
-                    assertThat(patient.getConsultationStartedAt()).isEqualTo(NOW);
+                .assertNext(detail -> {
+                    assertThat(detail.patient().getStatus()).isEqualTo(PatientStatus.IN_CONSULTATION);
+                    assertThat(detail.patient().getConsultationStartedAt()).isEqualTo(NOW);
+                    assertThat(detail.timeInCurrentStatus()).isEqualTo(Duration.ZERO);
                 })
                 .verifyComplete();
 
