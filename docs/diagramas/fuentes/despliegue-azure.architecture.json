@@ -257,7 +257,7 @@
       "title": "Seguridad",
       "items": [
         "Sin contraseñas de Azure en GitHub (OIDC)",
-        "Secrets de Kubernetes creados al desplegar",
+        "Entra ID sin cuentas locales; el pipeline solo escribe en su namespace",
         "Solo se publican las APIs; health y métricas quedan dentro"
       ]
     },

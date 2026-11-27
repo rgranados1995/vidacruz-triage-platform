@@ -1,4 +1,6 @@
-# Local Prometheus: scrapes both services every 5 seconds (enough to watch a demo live).
+# Local Prometheus: scrapes both services every 5 seconds (enough to watch a demo live). /prometheus needs the
+# X-API-Key of each service: these are the local development keys of docker-compose.yml, never a real one. If you
+# change TRIAGE_API_KEY or ASSISTANT_API_KEY, change them here too.
 global:
   scrape_interval: 5s
   evaluation_interval: 5s
@@ -6,10 +8,16 @@ global:
 scrape_configs:
   - job_name: triage-service
     metrics_path: /prometheus
+    http_headers:
+      X-API-Key:
+        secrets: ["local-dev-api-key-0001"]
     static_configs:
       - targets: ["triage-service:8081"]
 
   - job_name: clinical-assistant-service
     metrics_path: /prometheus
+    http_headers:
+      X-API-Key:
+        secrets: ["local-dev-assistant-key-0001"]
     static_configs:
       - targets: ["clinical-assistant-service:8082"]

@@ -35,7 +35,8 @@ class DegradedModeIntegrationTest {
                 .expectBody().jsonPath("$.status").isEqualTo("UP");
         client.get().uri("/health/readiness").exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.status").isEqualTo("UP");
-        client.get().uri("/prometheus").exchange().expectStatus().isOk()
+        client.get().uri("/prometheus").exchange().expectStatus().isUnauthorized();
+        client.get().uri("/prometheus").header("X-API-Key", TestEnvironment.API_KEY).exchange().expectStatus().isOk()
                 .expectBody(String.class)
                 .value(body -> assertThat(body).contains("application=\"clinical-assistant-service\""));
         client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()

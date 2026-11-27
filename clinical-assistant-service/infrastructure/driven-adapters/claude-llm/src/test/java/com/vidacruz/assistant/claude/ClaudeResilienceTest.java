@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.vidacruz.assistant.model.answer.ExcerptSet;
+import com.vidacruz.assistant.model.answer.Claim;
 import com.vidacruz.assistant.model.answer.GeneratedAnswer;
 import com.vidacruz.assistant.model.exception.BusinessError;
 import com.vidacruz.assistant.model.exception.BusinessException;
@@ -84,7 +85,7 @@ class ClaudeResilienceTest {
                 .whenScenarioStateIs("recovered").willReturn(answered()));
 
         StepVerifier.create(generator.generate(QUESTION, EXCERPTS))
-                .expectNext(new GeneratedAnswer(false, "En la primera hora.", List.of("E1")))
+                .expectNext(new GeneratedAnswer(false, List.of(new Claim("En la primera hora.", List.of("E1")))))
                 .verifyComplete();
 
         ANTHROPIC.verify(2, postRequestedFor(urlPathEqualTo(MESSAGES)));
@@ -218,8 +219,8 @@ class ClaudeResilienceTest {
     }
 
     private static ResponseDefinitionBuilder answered() throws Exception {
-        var text = JSON.writeValueAsString(Map.of("noProtocol", false, "answer", "En la primera hora.",
-                "excerptIds", List.of("E1")));
+        var text = JSON.writeValueAsString(Map.of("noProtocol", false, "claims",
+                List.of(Map.of("text", "En la primera hora.", "excerptIds", List.of("E1")))));
         return okJson(JSON.writeValueAsString(Map.of(
                 "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-opus-5-5",
                 "content", List.of(Map.of("type", "text", "text", text)), "stop_reason", "end_turn",

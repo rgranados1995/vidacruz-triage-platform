@@ -1,5 +1,5 @@
 # Public routes over HTTPS on the Gateway of vidacruz-edge. Only the APIs and their Swagger are published: /health
-# and /prometheus stay inside the cluster. Envoy streams the responses, so the alert stream (SSE) reaches the client
+# and /prometheus stay inside the cluster (and /prometheus asks for the API key anyway). Envoy streams the responses, so the alert stream (SSE) reaches the client
 # event by event; the heartbeat keeps it from being idle.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -40,6 +40,26 @@ spec:
       sectionName: https
   hostnames: [__PUBLIC_HOST__]
   rules:
+    # /docs/triage/swagger-ui.html is not under the prefix /docs/triage/swagger-ui (a prefix matches whole path
+    # elements): springdoc answers it with a redirection to swagger-ui/index.html that keeps the forwarded prefix
+    - matches:
+        - path:
+            type: Exact
+            value: /docs/triage/swagger-ui.html
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /swagger-ui.html
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/triage
+      backendRefs:
+        - name: triage-service
+          port: 8081
     - matches:
         - path:
             type: PathPrefix
@@ -122,6 +142,26 @@ spec:
       sectionName: https
   hostnames: [__PUBLIC_HOST__]
   rules:
+    # /docs/asistente/swagger-ui.html is not under the prefix /docs/asistente/swagger-ui (a prefix matches whole path
+    # elements): springdoc answers it with a redirection to swagger-ui/index.html that keeps the forwarded prefix
+    - matches:
+        - path:
+            type: Exact
+            value: /docs/asistente/swagger-ui.html
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /swagger-ui.html
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Prefix
+                value: /docs/asistente
+      backendRefs:
+        - name: clinical-assistant-service
+          port: 8082
     - matches:
         - path:
             type: PathPrefix

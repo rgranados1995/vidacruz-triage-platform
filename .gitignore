@@ -8,8 +8,13 @@ node_modules/
 # Local settings of the coding assistant
 .claude/
 
-# Regenerated on every build by the Clean Architecture plugin, with the absolute paths of the machine that builds
+# Injected on every build by the Clean Architecture plugin (absolute paths of the machine that builds) and deleted
+# right after by main.gradle; the rules that fail the build live in app-service/src/test/java/**/architecture
 **/applications/app-service/src/test/java/**/ArchitectureTest.java
+**/applications/app-service/src/test/java/**/Utils.java
+
+# Screenshots and reports of the visual check of the diagrams (evidence of each run, not documentation)
+docs/diagramas/*.visual-check.*
 
 # IDE and OS
 .idea/

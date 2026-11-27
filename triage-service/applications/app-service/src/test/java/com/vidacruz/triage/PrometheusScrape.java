@@ -15,7 +15,8 @@ final class PrometheusScrape {
 
     /** Value of the series of the level, or -1 when the series is not exposed. */
     static double counter(WebTestClient client, String name, String level) {
-        var body = Objects.requireNonNull(client.get().uri("/prometheus").exchange()
+        var body = Objects.requireNonNull(client.get().uri("/prometheus")
+                .header("X-API-Key", TestEnvironment.API_KEY).exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
                 .returnResult().getResponseBody());

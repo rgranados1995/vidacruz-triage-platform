@@ -120,6 +120,18 @@ class ConsultationAcceptanceIntegrationTest {
     }
 
     @Test
+    void shouldDiscardAValidCitationThatCarriesAnInventedDose() throws Exception {
+        // E1 is the real section and it is cited, but the corpus never mentions labetalol or 20 mg
+        modelAnswers(false, "Reconfirmar la presión tras 5 minutos de reposo y administrar labetalol 20 mg "
+                + "intravenoso.", List.of("E1"));
+
+        consult("¿Cuáles son las medidas iniciales ante una crisis hipertensiva?").expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.respuesta").isEqualTo(NOTICE)
+                .jsonPath("$.fuentes.length()").isEqualTo(0);
+    }
+
+    @Test
     void shouldAnswerTheNoticeWhenTheModelFindsTheExcerptsDoNotAnswer() throws Exception {
         // "manejo inicial del infarto" passes the similarity threshold: the model is the gate that stops it
         modelAnswers(true, "", List.of());
@@ -142,7 +154,8 @@ class ConsultationAcceptanceIntegrationTest {
     }
 
     private void modelAnswers(boolean noProtocol, String answer, List<String> ids) throws Exception {
-        var text = JSON.writeValueAsString(Map.of("noProtocol", noProtocol, "answer", answer, "excerptIds", ids));
+        var claims = answer.isEmpty() ? List.of() : List.of(Map.of("text", answer, "excerptIds", ids));
+        var text = JSON.writeValueAsString(Map.of("noProtocol", noProtocol, "claims", claims));
         ANTHROPIC.stubFor(post(urlPathEqualTo(MESSAGES)).willReturn(okJson(JSON.writeValueAsString(Map.of(
                 "id", "msg_test", "type", "message", "role", "assistant", "model", "claude-opus-5-5",
                 "content", List.of(Map.of("type", "text", "text", text)), "stop_reason", "end_turn",

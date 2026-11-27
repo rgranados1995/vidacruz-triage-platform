@@ -9,6 +9,7 @@ import com.anthropic.models.beta.messages.BetaStopReason;
 import com.anthropic.models.beta.messages.MessageCreateParams;
 import com.anthropic.models.beta.messages.StructuredMessage;
 import com.anthropic.models.beta.messages.StructuredMessageCreateParams;
+import com.vidacruz.assistant.model.answer.Claim;
 import com.vidacruz.assistant.model.answer.ExcerptSet;
 import com.vidacruz.assistant.model.answer.GeneratedAnswer;
 import com.vidacruz.assistant.model.answer.gateways.AnswerGenerator;
@@ -18,6 +19,7 @@ import com.vidacruz.assistant.model.question.ClinicalQuestion;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,7 +33,7 @@ import java.util.List;
 @Slf4j
 public class ClaudeAnswerGenerator implements AnswerGenerator {
 
-    private static final GeneratedAnswer UNREADABLE = new GeneratedAnswer(false, "", List.of());
+    private static final GeneratedAnswer UNREADABLE = new GeneratedAnswer(false, List.of());
 
     private final AnthropicClientAsync client;
     private final ClaudeProperties properties;
@@ -82,10 +84,19 @@ public class ClaudeAnswerGenerator implements AnswerGenerator {
             var text = block.text();
             if (text.isPresent()) {
                 var answer = text.get().text();
-                return new GeneratedAnswer(answer.noProtocol(), answer.answer(), answer.excerptIds());
+                return new GeneratedAnswer(answer.noProtocol(), claims(answer.claims()));
             }
         }
         return UNREADABLE;
+    }
+
+    /** A missing list or sentence stays missing: the excerpt set rejects it. */
+    private static List<Claim> claims(List<ModelAnswer.ModelClaim> claims) {
+        var converted = new ArrayList<Claim>();
+        for (var claim : claims == null ? List.<ModelAnswer.ModelClaim>of() : claims) {
+            converted.add(claim == null ? null : new Claim(claim.text(), claim.excerptIds()));
+        }
+        return converted;
     }
 
     private void logAnswer(StructuredMessage<ModelAnswer> message) {

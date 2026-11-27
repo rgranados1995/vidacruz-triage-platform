@@ -347,10 +347,11 @@ La regla RN-05 se cumple con tres filtros; si cualquiera falla, no sale contenid
    modelo de embeddings multilingüe que corre dentro del servicio). Si ninguna sección se parece lo suficiente
    (similitud menor a 0.50), se responde el aviso de "no existe protocolo" **sin llamar a la IA**.
 2. **La IA solo ve esas secciones.** Claude recibe únicamente los fragmentos encontrados, con la instrucción de usar
-   solo eso y de decir si no alcanza. Responde en un formato estructurado: si responde o no, el texto y qué
-   fragmentos usó.
-3. **Se validan las citas.** Si la IA cita un fragmento que no se le dio, o no cita ninguno, la respuesta se
-   **descarta** y se devuelve el aviso. Las `fuentes` de la respuesta salen de los fragmentos citados, nunca del
+   solo eso y de decir si no alcanza. Responde en un formato estructurado: si responde o no y, oración por
+   oración, el texto y qué fragmentos la dicen.
+3. **Se valida cada oración.** Si una oración cita un fragmento que no se le dio, no cita ninguno o trae una cifra o
+   unidad que sus fragmentos no dicen (por ejemplo, una dosis inventada), **toda** la respuesta se descarta y se
+   devuelve el aviso. Las `fuentes` de la respuesta salen de los fragmentos citados, nunca del
    texto de la IA.
 
 Más detalle en [`docs/adr/0002-rag-del-asistente.md`](../docs/adr/0002-rag-del-asistente.md) y
@@ -381,7 +382,13 @@ Más detalle en [`docs/adr/0002-rag-del-asistente.md`](../docs/adr/0002-rag-del-
 
 Se actualiza cada 5 segundos. Sin `ANTHROPIC_API_KEY`, los paneles de latencia de la IA quedan vacíos (no hubo llamadas). El tablero **VidaCruz · Servicios** muestra el tráfico HTTP, los errores y los recursos de los dos servicios.
 
-**Métricas en crudo** en <http://localhost:8082/prometheus>. Busca:
+**Métricas en crudo** en `http://localhost:8082/prometheus`. Piden la API key:
+
+```powershell
+curl.exe -H "X-API-Key: local-dev-assistant-key-0001" http://localhost:8082/prometheus
+```
+
+Busca:
 
 - `assistant_answers_total{outcome=...}`: preguntas por resultado (`answered`, `no_matching_protocol`,
   `declined_by_model`, `unsupported_answer`, `unavailable`).
@@ -438,7 +445,7 @@ cd clinical-assistant-service
 Corre unas 190 pruebas, entre ellas:
 
 - las tres consultas del enunciado;
-- respuestas que citan fragmentos inexistentes;
+- respuestas que citan fragmentos inexistentes o que, con una cita válida, traen una dosis inventada;
 - la IA caída: reintento, circuit breaker y 503;
 - eventos duplicados, viejos o dañados;
 - la reconstrucción desde Kafka.

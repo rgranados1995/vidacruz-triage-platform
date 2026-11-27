@@ -24,10 +24,13 @@ El modelo no decide solo qué es verdad: el código lo acota antes y lo verifica
    `RAG_SIMILARITY_THRESHOLD`. **Si ninguna pasa, se responde el aviso sin llamar al LLM.** La pregunta de diabetes del
    enunciado no puede alucinar porque el modelo nunca la ve.
 2. **Generación acotada.** Claude recibe solo esas secciones, cada una con un id (`E1`, `E2`…), y debe responder con
-   salida estructurada (JSON con esquema obligatorio): `noProtocol`, `answer` y `excerptIds`. La pregunta va escapada
-   y separada de las instrucciones, como dato.
-3. **Validación de citas.** Se acepta la respuesta solo si cita al menos un id entregado y no está vacía. Si cita un
-   id que no se entregó, si no cita nada o si el modelo dice que los fragmentos no responden, se devuelve el aviso.
+   salida estructurada (JSON con esquema obligatorio): `noProtocol` y `claims`, una lista de oraciones, cada una con
+   su `text` y los `excerptIds` que la dicen. La pregunta va escapada y separada de las instrucciones, como dato.
+3. **Validación oración por oración.** Cada oración debe tener texto, citar solo ids entregados y no contener ninguna
+   cifra ni unidad que no esté en los fragmentos que ella misma cita (`20 ml/kg` pasa si el fragmento dice
+   `20 ml/kg`; `20 mg`, `30 ml/kg` o una dosis de un fármaco que el corpus no nombra con cifra no pasan). Basta una
+   oración que falle para descartar **toda** la respuesta: el médico nunca recibe una mezcla de contenido sustentado
+   y no sustentado. Si el modelo dice que los fragmentos no responden, también se devuelve el aviso.
    Las fuentes que ve el médico (`protocolo`, `seccion`) se toman de los metadatos del corpus, **nunca del texto del
    modelo**, así que una fuente no se puede inventar.
 
@@ -50,7 +53,7 @@ tres cosas que el SDK da y el `ChatModel` de Spring AI 1.1 no daba al decidirlo:
 
 | Necesidad de RN-05 | SDK oficial | `ChatModel` de Spring AI |
 |---|---|---|
-| Respuesta con esquema obligatorio (`noProtocol`, `answer`, `excerptIds`), garantizado por la API | Structured outputs nativos | Conversión del texto a JSON con instrucciones en el prompt: el modelo puede no cumplirlo |
+| Respuesta con esquema obligatorio (`noProtocol` y `claims` con `text` y `excerptIds`), garantizado por la API | Structured outputs nativos | Conversión del texto a JSON con instrucciones en el prompt: el modelo puede no cumplirlo |
 | Fallback del lado del servidor si un modelo rechaza la petición | `fallbacksDefault()` | No disponible |
 | Esfuerzo del modelo configurable | `outputConfig(..., effort)` | No disponible |
 
@@ -101,8 +104,10 @@ Medido el 2026-11-26 con el modelo real:
   detrás del gateway `ProtocolRetriever`.
 - La imagen del asistente usa Ubuntu (glibc) en lugar de Alpine, porque ONNX Runtime y los tokenizers son nativos.
   Pesa unos 646 MB, con un modelo de 118 MB.
-- Las compuertas verifican que la respuesta **cite** el corpus, no que cada frase sea fiel al fragmento citado. Eso
-  queda en manos del prompt y del modelo. Una evaluación periódica con preguntas reales es la evolución natural.
+- La compuerta 3 es una regla conservadora y determinista: verifica las citas y las cifras de cada oración, que es
+  lo que daña a un paciente si se inventa (dosis, tiempos, umbrales). No verifica el sentido de una oración sin cifras
+  (por ejemplo, un fármaco nombrado sin dosis): eso queda en manos del prompt y del modelo. La evolución es un juez
+  de implicación (entailment) por oración y una evaluación periódica con preguntas reales.
 - Cambiar de modelo o de esfuerzo es configuración (`LLM_MODEL`, `LLM_EFFORT`). Cambiar el modelo de embeddings exige
   recalibrar el umbral con la prueba `ProtocolCorpusSearchTest`.
 - El corpus es el del enunciado palabra por palabra, y lo fija la prueba `OfficialCorpusTest`: una sección editada

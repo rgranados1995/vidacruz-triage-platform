@@ -21,8 +21,10 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * API key authentication (B1 of D4): every route of the API needs the {@code X-API-Key} header; the probes, the
- * metrics and the API documentation stay public because they expose no patient data. Stateless: no session, no
+ * API key authentication (B1 of D4): every route of the API and the metrics need the {@code X-API-Key} header (the
+ * metrics tell how many patients arrive and how urgent they are, so only the monitoring system reads them). The
+ * probes and the API documentation stay public: they expose no data, and the documentation is turned off with
+ * {@code API_DOCS_ENABLED=false}. Stateless: no session, no
  * CSRF, no login form.
  */
 @Configuration
@@ -32,7 +34,7 @@ public class ApiKeySecurityConfig {
 
     public static final String API_KEY_HEADER = "X-API-Key";
     private static final String CLIENT = "api-client";
-    private static final String[] PUBLIC_PATHS = {"/health", "/health/**", "/prometheus", "/v3/api-docs",
+    private static final String[] PUBLIC_PATHS = {"/health", "/health/**", "/v3/api-docs",
         "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**", "/webjars/**"};
 
     @Bean

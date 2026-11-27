@@ -45,8 +45,9 @@ class ApplicationStartupIntegrationTest {
     }
 
     @Test
-    void shouldExposePrometheusMetricsTaggedWithTheApplication() {
-        webTestClient.get().uri("/prometheus")
+    void shouldExposePrometheusMetricsTaggedWithTheApplicationOnlyWithTheApiKey() {
+        webTestClient.get().uri("/prometheus").exchange().expectStatus().isUnauthorized();
+        webTestClient.get().uri("/prometheus").header("X-API-Key", TestEnvironment.API_KEY)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)

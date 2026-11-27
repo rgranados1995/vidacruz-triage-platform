@@ -61,9 +61,11 @@ spec:
           ports:
             - name: redis
               containerPort: 6379
+          # CPU requested is what it needs at rest, so the platform fits one node of 4 vCPU next to the pods of AKS;
+          # with no CPU limit it uses the free CPU of the node when it starts or when traffic comes
           resources:
             requests:
-              cpu: 100m
+              cpu: 50m
               memory: 128Mi
             limits:
               memory: 256Mi

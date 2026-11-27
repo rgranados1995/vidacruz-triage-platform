@@ -111,7 +111,7 @@ El de las tres compuertas del RAG está en la sección 4 y el de Azure, en la se
 | **Auditoría que no se puede borrar** (RN-04) | No existe endpoint para borrarla, y además triggers de PostgreSQL rechazan `UPDATE`, `DELETE` y `TRUNCATE` sobre la tabla | Migración V1 |
 | **Reporte en una sola consulta SQL** (RF-05) | `generate_series`, `ROW_NUMBER() OVER (PARTITION BY ...)`, agregados con `FILTER`, `PERCENTILE_CONT(0.95)` y `GROUPING SETS`; nada se calcula en memoria | `OperationReportSql` |
 | **Alertas RF-06: persistidas, con estado y por SSE** | Una alerta no se puede perder: se crea en la transacción del escalamiento, tiene estado (pendiente, reconocida, resuelta) y se resuelve sola al atender al paciente. El stream SSE sirve a cualquier cliente HTTP, y entre réplicas se reparte con LISTEN/NOTIFY | [ADR 0001](docs/adr/0001-alertas-de-escalamiento.md) |
-| **RAG con tres compuertas** (RN-05) | 1) búsqueda semántica con umbral: si nada se parece, se responde el aviso **sin llamar a la IA**; 2) Claude solo ve esos fragmentos y responde en JSON con esquema obligatorio; 3) se descartan las respuestas que citan fragmentos que no se le dieron. Las fuentes salen del corpus, nunca del texto de la IA | [ADR 0002](docs/adr/0002-rag-del-asistente.md) |
+| **RAG con tres compuertas** (RN-05) | 1) búsqueda semántica con umbral: si nada se parece, se responde el aviso **sin llamar a la IA**; 2) Claude solo ve esos fragmentos y responde en JSON con esquema obligatorio; 3) se valida cada oración: debe citar fragmentos que se le dieron y no tener cifras ni unidades que esos fragmentos no digan; una sola oración que falle descarta toda la respuesta. Las fuentes salen del corpus, nunca del texto de la IA | [ADR 0002](docs/adr/0002-rag-del-asistente.md) |
 | **Vector store en memoria y embeddings locales** | Tres protocolos no justifican una base vectorial; el modelo multilingüe corre dentro de la JVM, sin segunda llave ni red, así que el aviso de "sin protocolo" funciona aunque no haya internet | [ADR 0002](docs/adr/0002-rag-del-asistente.md) |
 | **Modo degradado** | Retry solo de fallas pasajeras, circuit breaker y límite de 15 s por intento. Sin IA, el asistente responde 503 con un mensaje claro y `Retry-After`, sigue `UP` y el triaje no se entera | [ADR 0003](docs/adr/0003-modo-degradado-del-asistente.md) |
 | **Proyección del estado de urgencias en Redis** | Idempotente por estado y fecha del evento: un duplicado no cuenta dos veces y un evento atrasado no deshace uno nuevo. Si Redis pierde los datos, el asistente la reconstruye leyendo el topic desde el principio | `clinical-assistant-service` |
@@ -183,7 +183,7 @@ de la arquitectura limpia. El CI de GitHub Actions corre el build completo de ca
   - **Urgencias:** pacientes por nivel, escalamientos y alertas.
   - **Asistente clínico:** respuestas por resultado, latencia de la IA, circuit breaker y lag de Kafka.
   - **Servicios:** tráfico, errores, latencia p95 por ruta, memoria y CPU.
-- **Métricas de negocio** pedidas por el enunciado, en `/prometheus` de cada servicio:
+- **Métricas de negocio** pedidas por el enunciado, en `/prometheus` de cada servicio (con la API key `X-API-Key`):
   - `triage_patients_classified_total{level}`;
   - `triage_patients_escalated_total{level}`;
   - `assistant_llm_latency_seconds{outcome}`, un histograma por intento.
@@ -201,18 +201,26 @@ de la arquitectura limpia. El CI de GitHub Actions corre el build completo de ca
 - **Kubernetes:** manifests con Kustomize en `*/deployment/k8s` (Deployment de 2 réplicas, probes, recursos, Pod
   Security `restricted`, PodDisruptionBudget, ConfigMap y la forma de los Secrets) y la plataforma en `infra/k8s`:
   - Kafka y Redis;
-  - las rutas de Gateway API;
-  - el emisor de certificados.
+  - las rutas de Gateway API (`infra/k8s/routes`);
+  - el Gateway y el emisor de certificados.
 - **Azure:** `infra/azure/main.bicep` crea:
-  - AKS;
+  - AKS con Microsoft Entra ID, Azure RBAC y **sin cuentas locales**;
   - el registro de imágenes;
   - PostgreSQL Flexible con TLS;
   - la IP pública con nombre DNS;
   - la identidad con la que GitHub Actions despliega por OIDC, sin contraseñas guardadas.
 
-  `provision.ps1` crea los recursos y `deploy.ps1` (o el workflow `deploy`) construye, sube y despliega.
-- **URL en Azure:** _se completa al desplegar_ (`https://<nombre>.<región>.cloudapp.azure.com/triage/...` y
-  `/asistente/...`).
+  `provision.ps1` crea los recursos y prepara el clúster (cert-manager verificado por SHA-256, Gateway, rutas). Lo
+  corre una persona con `az login`, `kubectl` y `kubelogin` (`az aks install-cli`). `deploy.ps1` (o el workflow
+  `deploy`) construye, sube y despliega, y solo puede escribir en el namespace `vidacruz`.
+- **Tamaño:** todo cabe en un nodo de 4 vCPU (`Standard_B4ms`); la plataforma pide 850m de CPU. Ver el ADR 0004.
+- **URL en Azure:** <https://vidacruz-l7rsr6.northcentralus.cloudapp.azure.com>
+  - triaje: `POST /triage/pacientes` y el resto de `/triage/...`, con el header `X-API-Key`;
+  - asistente: `POST /asistente/consulta` y `/asistente/...`, con el header `X-API-Key`;
+  - Swagger del triaje: <https://vidacruz-l7rsr6.northcentralus.cloudapp.azure.com/docs/triage/swagger-ui/index.html>;
+  - Swagger del asistente: <https://vidacruz-l7rsr6.northcentralus.cloudapp.azure.com/docs/asistente/swagger-ui/index.html>.
+
+  Grafana y Prometheus no se despliegan en Azure: la observabilidad se ve en local (sección 8).
 
 [![Despliegue en Azure](docs/diagramas/despliegue-azure.svg)](docs/diagramas/despliegue-azure.svg)
 
@@ -248,9 +256,9 @@ Detalle y costos en el [ADR 0004](docs/adr/0004-despliegue-en-azure.md).
   Hubs) y 3 nodos en zonas.
 - **Mensajes dañados de Kafka:** se registran y se saltan para no bloquear la partición; la evolución es una cola de
   mensajes fallidos (DLQ).
-- **Fidelidad frase por frase del RAG:** las compuertas garantizan que la respuesta **cite** el corpus, no que cada
-  frase sea fiel al fragmento citado; eso queda en manos del modelo. La evolución es una evaluación periódica con
-  preguntas reales.
+- **Fidelidad de las oraciones sin cifras:** la compuerta 3 valida, oración por oración, las citas y todas las cifras
+  y unidades (dosis, tiempos, umbrales); el sentido de una oración sin cifras queda en manos del modelo. La evolución
+  es un juez de implicación (entailment) por oración y una evaluación periódica con preguntas reales.
 - **Reconstrucción del estado de urgencias:** si Redis se vacía con el servicio en marcha, se reconstruye al siguiente
   arranque.
 - **Secretos en Azure:** hoy son Secrets de Kubernetes creados por el despliegue; la evolución es Key Vault con

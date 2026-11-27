@@ -15,7 +15,8 @@ final class PrometheusScrape {
 
     /** Value of the series {@code name} whose label {@code label} is {@code value}, or -1 when it is not exposed. */
     static double value(WebTestClient client, String name, String label, String value) {
-        var body = Objects.requireNonNull(client.get().uri("/prometheus").exchange()
+        var body = Objects.requireNonNull(client.get().uri("/prometheus")
+                .header("X-API-Key", TestEnvironment.API_KEY).exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
                 .returnResult().getResponseBody());

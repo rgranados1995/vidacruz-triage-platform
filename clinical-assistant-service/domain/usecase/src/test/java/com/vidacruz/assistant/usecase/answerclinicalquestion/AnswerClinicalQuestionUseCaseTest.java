@@ -3,6 +3,7 @@ package com.vidacruz.assistant.usecase.answerclinicalquestion;
 import com.vidacruz.assistant.model.answer.AnswerOutcome;
 import com.vidacruz.assistant.model.answer.ClinicalAnswer;
 import com.vidacruz.assistant.model.answer.ExcerptSet;
+import com.vidacruz.assistant.model.answer.Claim;
 import com.vidacruz.assistant.model.answer.GeneratedAnswer;
 import com.vidacruz.assistant.model.answer.Source;
 import com.vidacruz.assistant.model.answer.gateways.AnswerGenerator;
@@ -48,7 +49,8 @@ class AnswerClinicalQuestionUseCaseTest {
     void shouldAnswerWithTheSourcesOfTheExcerptsTheModelCited() {
         when(retriever.retrieve(new ClinicalQuestion(HYPERTENSION))).thenReturn(Flux.just(MEASURES));
         when(generator.generate(any(), any())).thenReturn(Mono.just(
-                new GeneratedAnswer(false, "Reconfirmar la presión tras 5 minutos de reposo.", List.of("E1"))));
+                new GeneratedAnswer(false,
+                        List.of(new Claim("Reconfirmar la presión tras 5 minutos de reposo.", List.of("E1"))))));
 
         StepVerifier.create(useCase().answer(HYPERTENSION))
                 .assertNext(grounded -> {
@@ -81,7 +83,7 @@ class AnswerClinicalQuestionUseCaseTest {
     void shouldDiscardAnAnswerThatCitesNothingItWasGiven() {
         when(retriever.retrieve(any())).thenReturn(Flux.just(MEASURES));
         when(generator.generate(any(), any())).thenReturn(Mono.just(
-                new GeneratedAnswer(false, "Iniciar metformina.", List.of("PROTO-999"))));
+                new GeneratedAnswer(false, List.of(new Claim("Iniciar metformina.", List.of("PROTO-999"))))));
 
         StepVerifier.create(useCase().answer(HYPERTENSION))
                 .assertNext(grounded -> {

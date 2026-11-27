@@ -94,8 +94,8 @@
       "lane": "compuertas",
       "col": 4,
       "type": "security",
-      "label": "Valida las citas",
-      "sublabel": "solo fragmentos dados",
+      "label": "Valida cada oración",
+      "sublabel": "citas y cifras",
       "tag": "compuerta 3",
       "width": 150
     },
@@ -160,7 +160,7 @@
       "id": "citas-respuesta",
       "from": "citas",
       "to": "respuesta",
-      "label": "cita válida",
+      "label": "todas sustentadas",
       "variant": "emphasis"
     },
     {
@@ -175,7 +175,7 @@
       "id": "citas-aviso",
       "from": "citas",
       "to": "aviso",
-      "label": "cita inválida",
+      "label": "una sin sustento",
       "variant": "security",
       "role": "branch",
       "fromSide": "bottom",

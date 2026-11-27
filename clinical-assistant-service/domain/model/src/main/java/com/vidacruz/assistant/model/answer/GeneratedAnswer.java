@@ -8,18 +8,17 @@ import java.util.List;
  * What the language model proposed, before it is checked against the excerpts it was given. It is never shown as is.
  *
  * @param noProtocol the model found no answer in the excerpts
- * @param text       proposed answer
- * @param excerptIds ids of the excerpts the model says it used
+ * @param claims     the sentences of the proposed answer, each with the excerpts the model says state it
  */
-public record GeneratedAnswer(boolean noProtocol, String text, List<String> excerptIds) {
+public record GeneratedAnswer(boolean noProtocol, List<Claim> claims) {
 
     public GeneratedAnswer {
-        // Null ids are kept on purpose: an answer citing one is rejected by the excerpt set, not by a crash
-        excerptIds = excerptIds == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(excerptIds));
+        // Null sentences are kept on purpose: an answer with one is rejected by the excerpt set, not by a crash
+        claims = claims == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(claims));
     }
 
     /** The model declined to answer (it said no excerpt covers the question, or it refused). */
     public static GeneratedAnswer declined() {
-        return new GeneratedAnswer(true, "", List.of());
+        return new GeneratedAnswer(true, List.of());
     }
 }

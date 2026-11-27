@@ -1,0 +1,8 @@
+# Public routes of the APIs and their Swagger, in the namespace vidacruz but attached to the Gateway of
+# vidacruz-edge. Part of the preparation of the cluster (infra/azure/provision.ps1): the deployment workflow can
+# only write the workloads of the namespace, and changing what is public is a decision of the administrator.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vidacruz
+resources:
+  - routes.yaml

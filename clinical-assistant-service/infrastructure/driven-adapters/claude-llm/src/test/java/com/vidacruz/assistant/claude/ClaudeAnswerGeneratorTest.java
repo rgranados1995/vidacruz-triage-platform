@@ -3,6 +3,7 @@ package com.vidacruz.assistant.claude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.vidacruz.assistant.model.answer.ExcerptSet;
+import com.vidacruz.assistant.model.answer.Claim;
 import com.vidacruz.assistant.model.answer.GeneratedAnswer;
 import com.vidacruz.assistant.model.exception.BusinessError;
 import com.vidacruz.assistant.model.exception.BusinessException;
@@ -61,8 +62,8 @@ class ClaudeAnswerGeneratorTest {
                 answer(false, "Reconfirmar la presión tras 5 minutos de reposo.", List.of("E1"))))));
 
         StepVerifier.create(generator().generate(QUESTION, EXCERPTS))
-                .expectNext(new GeneratedAnswer(false, "Reconfirmar la presión tras 5 minutos de reposo.",
-                        List.of("E1")))
+                .expectNext(new GeneratedAnswer(false,
+                        List.of(new Claim("Reconfirmar la presión tras 5 minutos de reposo.", List.of("E1")))))
                 .verifyComplete();
 
         ANTHROPIC.verify(postRequestedFor(urlPathEqualTo(MESSAGES))
@@ -74,7 +75,8 @@ class ClaudeAnswerGeneratorTest {
                 .withRequestBody(matchingJsonPath("$.fallbacks", equalTo("default")))
                 .withRequestBody(matchingJsonPath("$.output_config.effort", equalTo("medium")))
                 .withRequestBody(matchingJsonPath("$.output_config.format.type", equalTo("json_schema")))
-                .withRequestBody(matchingJsonPath("$.output_config.format.schema.properties.excerptIds"))
+                .withRequestBody(matchingJsonPath(
+                        "$.output_config.format.schema.properties.claims.items.properties.excerptIds"))
                 .withRequestBody(matchingJsonPath("$.system", containing("using only the excerpts")))
                 .withRequestBody(matchingJsonPath("$.messages[0].content", containing("<excerpt id=\"E1\" "
                         + "protocol=\"PROTO-001\"")))
@@ -108,12 +110,12 @@ class ClaudeAnswerGeneratorTest {
     @Test
     void shouldTreatAnUnreadableAnswerAsAnAnswerWithoutContent() throws Exception {
         ANTHROPIC.stubFor(post(urlPathEqualTo(MESSAGES)).willReturn(okJson(message("max_tokens",
-                "{\"noProtocol\": false, \"answer\": \"Reconfirmar la pre"))));
+                "{\"noProtocol\": false, \"claims\": [{\"text\": \"Reconfirmar la pre"))));
 
         StepVerifier.create(generator().generate(QUESTION, EXCERPTS))
                 .assertNext(generated -> {
                     assertThat(generated.noProtocol()).isFalse();
-                    assertThat(generated.excerptIds()).isEmpty();
+                    assertThat(generated.claims()).isEmpty();
                 })
                 .verifyComplete();
     }
@@ -126,7 +128,7 @@ class ClaudeAnswerGeneratorTest {
                 "usage", Map.of("input_tokens", 10, "output_tokens", 0))))));
 
         StepVerifier.create(generator().generate(QUESTION, EXCERPTS))
-                .assertNext(generated -> assertThat(generated.excerptIds()).isEmpty())
+                .assertNext(generated -> assertThat(generated.claims()).isEmpty())
                 .verifyComplete();
     }
 
@@ -207,7 +209,8 @@ class ClaudeAnswerGeneratorTest {
     }
 
     private static String answer(boolean noProtocol, String text, List<String> ids) throws Exception {
-        return JSON.writeValueAsString(Map.of("noProtocol", noProtocol, "answer", text, "excerptIds", ids));
+        var claims = text.isEmpty() ? List.of() : List.of(Map.of("text", text, "excerptIds", ids));
+        return JSON.writeValueAsString(Map.of("noProtocol", noProtocol, "claims", claims));
     }
 
     private static String message(String stopReason, String text) throws Exception {

@@ -595,7 +595,14 @@ el nombre** del paciente. Pulsa `Ctrl+C` para salir.
 Se actualizan cada 5 segundos. Registra pacientes (o corre la colección de Postman) y míralos moverse. Arriba a la
 derecha cambias el rango de tiempo. Prometheus, que guarda las métricas, está en <http://localhost:9090>.
 
-**Métricas en crudo** en <http://localhost:8081/prometheus>. Busca:
+**Métricas en crudo** en `http://localhost:8081/prometheus`. Piden la API key, porque dicen cuántos pacientes llegan y
+qué tan graves:
+
+```powershell
+curl.exe -H "X-API-Key: local-dev-api-key-0001" http://localhost:8081/prometheus
+```
+
+Busca:
 
 - `triage_patients_classified_total{level=...}`: pacientes clasificados por nivel.
 - `triage_patients_escalated_total{level=...}`: escalamientos.

@@ -130,6 +130,16 @@ jacoco {
     reportsDirectory.set(layout.buildDirectory.dir("reports"))
 }
 
+// The Clean Architecture plugin injects ArchitectureTest and Utils into app-service on every build: their rules only
+// log warnings and carry the absolute paths of the machine that builds. They are removed right after the injection;
+// the architecture rules that fail the build are in app-service/src/test/java/com/vidacruz/assistant/architecture.
+tasks.named('validateStructure') {
+    doLast {
+        delete file('applications/app-service/src/test/java/com/vidacruz/assistant/ArchitectureTest.java'),
+                file('applications/app-service/src/test/java/com/vidacruz/assistant/Utils.java')
+    }
+}
+
 tasks.register('jacocoMergedReport', JacocoReport) {
     dependsOn = [subprojects.test, subprojects.jacocoTestReport]
     additionalSourceDirs.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
