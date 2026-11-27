@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "VidaCruz · Despliegue en Azure (AKS)",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1300,
+      760
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Usuarios",
+      "sublabel": "evaluador y equipo médico",
+      "pos": [
+        30,
+        330
+      ],
+      "size": [
+        150,
+        68
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "security",
+      "label": "Gateway API",
+      "sublabel": "Istio administrado",
+      "pos": [
+        240,
+        330
+      ],
+      "size": [
+        160,
+        68
+      ],
+      "tag": "HTTPS Let's Encrypt"
+    },
+    {
+      "id": "triage",
+      "type": "backend",
+      "label": "triage-service",
+      "sublabel": "2 réplicas",
+      "pos": [
+        480,
+        200
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "kafka",
+      "type": "messagebus",
+      "label": "Kafka",
+      "sublabel": "StatefulSet KRaft",
+      "pos": [
+        480,
+        330
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "assistant",
+      "type": "backend",
+      "label": "clinical-assistant",
+      "sublabel": "2 réplicas",
+      "pos": [
+        480,
+        460
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis",
+      "sublabel": "StatefulSet con contraseña",
+      "pos": [
+        760,
+        460
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL Flexible",
+      "sublabel": "TLS · backups 7 días",
+      "pos": [
+        760,
+        60
+      ],
+      "size": [
+        200,
+        68
+      ]
+    },
+    {
+      "id": "acr",
+      "type": "cloud",
+      "label": "Container Registry",
+      "sublabel": "imágenes de los servicios",
+      "pos": [
+        1060,
+        60
+      ],
+      "size": [
+        200,
+        68
+      ]
+    },
+    {
+      "id": "claude",
+      "type": "external",
+      "label": "API de Claude",
+      "sublabel": "Anthropic",
+      "pos": [
+        480,
+        620
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub Actions",
+      "sublabel": "CI y despliegue manual",
+      "pos": [
+        1060,
+        620
+      ],
+      "size": [
+        200,
+        68
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Azure · grupo de recursos vidacruz",
+      "wraps": [
+        "gateway",
+        "triage",
+        "kafka",
+        "assistant",
+        "redis",
+        "postgres",
+        "acr"
+      ],
+      "pad": 22
+    },
+    {
+      "kind": "security-group",
+      "label": "AKS · Pod Security restricted",
+      "wraps": [
+        "gateway",
+        "triage",
+        "kafka",
+        "assistant",
+        "redis"
+      ],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "https",
+      "from": "users",
+      "to": "gateway",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "route-triage",
+      "from": "gateway",
+      "to": "triage",
+      "label": "/triage/**",
+      "variant": "emphasis"
+    },
+    {
+      "id": "route-assistant",
+      "from": "gateway",
+      "to": "assistant",
+      "label": "/asistente/**",
+      "variant": "emphasis"
+    },
+    {
+      "id": "events",
+      "from": "triage",
+      "to": "kafka",
+      "label": "eventos",
+      "labelDy": 44
+    },
+    {
+      "id": "consume",
+      "from": "kafka",
+      "to": "assistant"
+    },
+    {
+      "id": "sql",
+      "from": "triage",
+      "to": "postgres",
+      "label": "TLS, IP de salida fija",
+      "variant": "security"
+    },
+    {
+      "id": "projection",
+      "from": "assistant",
+      "to": "redis",
+      "label": "AUTH"
+    },
+    {
+      "id": "llm",
+      "from": "assistant",
+      "to": "claude",
+      "label": "HTTPS",
+      "variant": "dashed",
+      "labelDy": 59
+    },
+    {
+      "id": "push",
+      "from": "github",
+      "to": "acr",
+      "label": "push por OIDC",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Infraestructura como código",
+      "items": [
+        "Bicep: AKS, ACR, PostgreSQL, IPs públicas e identidad",
+        "Manifests con Kustomize, validados contra su esquema"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Seguridad",
+      "items": [
+        "Sin contraseñas de Azure en GitHub (OIDC)",
+        "Secrets de Kubernetes creados al desplegar",
+        "Solo se publican las APIs; health y métricas quedan dentro"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Costo y evolución",
+      "items": [
+        "Un nodo y un broker: suficiente para evaluar",
+        "Evolución: Event Hubs, Key Vault y red privada"
+      ]
+    }
+  ]
+}

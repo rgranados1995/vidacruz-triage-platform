@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "VidaCruz · Registro, evento y escalamiento de punta a punta",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1060,
+      640
+    ]
+  },
+  "participants": [
+    {
+      "id": "nurse",
+      "type": "external",
+      "label": "Enfermería",
+      "sublabel": "recepción"
+    },
+    {
+      "id": "triage",
+      "type": "backend",
+      "label": "Triaje",
+      "sublabel": "triage-service"
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "transacciones"
+    },
+    {
+      "id": "kafka",
+      "type": "messagebus",
+      "label": "Kafka",
+      "sublabel": "triaje.eventos"
+    },
+    {
+      "id": "assistant",
+      "type": "backend",
+      "label": "Asistente",
+      "sublabel": "clinical-assistant"
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis",
+      "sublabel": "estado de urgencias"
+    },
+    {
+      "id": "medical",
+      "type": "external",
+      "label": "Equipo médico",
+      "sublabel": "pantallas"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 262,
+      "label": "Registro y clasificación"
+    },
+    {
+      "from": 272,
+      "to": 384,
+      "label": "Publicación por el outbox"
+    },
+    {
+      "from": 394,
+      "to": 574,
+      "label": "Escalamiento por SLA"
+    }
+  ],
+  "messages": [
+    {
+      "from": "nurse",
+      "to": "triage",
+      "y": 172,
+      "label": "POST /triage/pacientes",
+      "variant": "emphasis"
+    },
+    {
+      "from": "triage",
+      "to": "postgres",
+      "y": 208,
+      "label": "paciente + auditoría + outbox",
+      "variant": "emphasis",
+      "note": "una sola transacción"
+    },
+    {
+      "from": "triage",
+      "to": "nurse",
+      "y": 244,
+      "label": "201 nivel y SLA",
+      "variant": "return"
+    },
+    {
+      "from": "triage",
+      "to": "kafka",
+      "y": 292,
+      "label": "paciente_registrado",
+      "variant": "emphasis",
+      "note": "relay del outbox, SKIP LOCKED"
+    },
+    {
+      "from": "kafka",
+      "to": "assistant",
+      "y": 328,
+      "label": "en orden por paciente",
+      "variant": "emphasis"
+    },
+    {
+      "from": "assistant",
+      "to": "redis",
+      "y": 364,
+      "label": "aplica el estado",
+      "variant": "default",
+      "note": "idempotente"
+    },
+    {
+      "from": "triage",
+      "to": "postgres",
+      "y": 414,
+      "label": "escala una vez si venció el SLA",
+      "variant": "emphasis"
+    },
+    {
+      "from": "postgres",
+      "to": "triage",
+      "y": 450,
+      "label": "NOTIFY alerta",
+      "variant": "dashed"
+    },
+    {
+      "from": "triage",
+      "to": "medical",
+      "y": 486,
+      "label": "evento alerta por SSE",
+      "variant": "emphasis"
+    },
+    {
+      "from": "medical",
+      "to": "triage",
+      "y": 522,
+      "label": "reconoce la alerta",
+      "variant": "default"
+    },
+    {
+      "from": "triage",
+      "to": "kafka",
+      "y": 556,
+      "label": "paciente_escalado",
+      "variant": "dashed"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "triage",
+      "from": 166,
+      "to": 252,
+      "type": "backend"
+    },
+    {
+      "participant": "triage",
+      "from": 286,
+      "to": 336,
+      "type": "backend"
+    },
+    {
+      "participant": "assistant",
+      "from": 322,
+      "to": 372,
+      "type": "backend"
+    },
+    {
+      "participant": "triage",
+      "from": 408,
+      "to": 564,
+      "type": "backend"
+    }
+  ]
+}

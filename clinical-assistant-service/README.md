@@ -341,6 +341,8 @@ Llama a cualquier ruta sin `X-API-Key`. **Esperado:** 401 `AST-005`
 
 La regla RN-05 se cumple con tres filtros; si cualquiera falla, no sale contenido clínico:
 
+[![RAG con tres compuertas](../docs/diagramas/rag-tres-compuertas.svg)](../docs/diagramas/rag-tres-compuertas.svg)
+
 1. **Búsqueda en el corpus.** La pregunta se compara con cada sección de los protocolos (búsqueda semántica con un
    modelo de embeddings multilingüe que corre dentro del servicio). Si ninguna sección se parece lo suficiente
    (similitud menor a 0.50), se responde el aviso de "no existe protocolo" **sin llamar a la IA**.

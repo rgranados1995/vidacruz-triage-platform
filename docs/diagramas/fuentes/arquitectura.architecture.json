@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "VidaCruz · Arquitectura de la plataforma",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      780
+    ]
+  },
+  "components": [
+    {
+      "id": "nurse",
+      "type": "external",
+      "label": "Enfermería",
+      "sublabel": "recepción de urgencias",
+      "pos": [
+        30,
+        320
+      ],
+      "size": [
+        150,
+        68
+      ]
+    },
+    {
+      "id": "medical",
+      "type": "external",
+      "label": "Equipo médico",
+      "sublabel": "pantallas y consultas",
+      "pos": [
+        600,
+        90
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "triage",
+      "type": "backend",
+      "label": "triage-service",
+      "sublabel": "WebFlux :8081",
+      "pos": [
+        315,
+        320
+      ],
+      "size": [
+        170,
+        68
+      ],
+      "tag": "RN-01 a RN-04"
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL 16",
+      "sublabel": "pacientes · auditoría · outbox · alertas",
+      "pos": [
+        275,
+        520
+      ],
+      "size": [
+        250,
+        68
+      ]
+    },
+    {
+      "id": "kafka",
+      "type": "messagebus",
+      "label": "Kafka",
+      "sublabel": "triaje.eventos",
+      "pos": [
+        620,
+        320
+      ],
+      "size": [
+        130,
+        68
+      ]
+    },
+    {
+      "id": "assistant",
+      "type": "backend",
+      "label": "clinical-assistant-service",
+      "sublabel": "WebFlux :8082",
+      "pos": [
+        880,
+        320
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "tag": "RAG · RN-05"
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis 7.4",
+      "sublabel": "estado de urgencias",
+      "pos": [
+        905,
+        520
+      ],
+      "size": [
+        160,
+        68
+      ]
+    },
+    {
+      "id": "claude",
+      "type": "external",
+      "label": "API de Claude",
+      "sublabel": "Anthropic",
+      "pos": [
+        1220,
+        320
+      ],
+      "size": [
+        140,
+        68
+      ]
+    },
+    {
+      "id": "observability",
+      "type": "cloud",
+      "label": "Observabilidad",
+      "sublabel": "Prometheus · Grafana · Jaeger",
+      "pos": [
+        575,
+        640
+      ],
+      "size": [
+        220,
+        68
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Plataforma VidaCruz (Docker Compose o AKS)",
+      "wraps": [
+        "triage",
+        "postgres",
+        "kafka",
+        "assistant",
+        "redis",
+        "observability"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "register",
+      "from": "nurse",
+      "to": "triage",
+      "label": "POST /triage/pacientes",
+      "variant": "emphasis"
+    },
+    {
+      "id": "persist",
+      "from": "triage",
+      "to": "postgres",
+      "label": "R2DBC, una transacción",
+      "labelDy": 70
+    },
+    {
+      "id": "publish",
+      "from": "triage",
+      "to": "kafka",
+      "label": "outbox → CloudEvents",
+      "variant": "emphasis"
+    },
+    {
+      "id": "consume",
+      "from": "kafka",
+      "to": "assistant",
+      "label": "orden por paciente",
+      "variant": "emphasis"
+    },
+    {
+      "id": "project",
+      "from": "assistant",
+      "to": "redis",
+      "label": "proyección idempotente",
+      "labelDy": 70
+    },
+    {
+      "id": "generate",
+      "from": "assistant",
+      "to": "claude",
+      "label": "fragmentos citables",
+      "variant": "security"
+    },
+    {
+      "id": "alerts",
+      "from": "medical",
+      "to": "triage",
+      "label": "alertas SSE",
+      "fromSide": "left",
+      "toSide": "top"
+    },
+    {
+      "id": "ask",
+      "from": "medical",
+      "to": "assistant",
+      "label": "consulta protocolos",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "telemetry-triage",
+      "from": "triage",
+      "to": "observability",
+      "label": "métricas y trazas",
+      "variant": "dashed"
+    },
+    {
+      "id": "telemetry-assistant",
+      "from": "assistant",
+      "to": "observability",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "triage-service",
+      "items": [
+        "Clasifica en 5 niveles y fija el SLA",
+        "Escala una sola vez y alerta por SSE",
+        "Paciente, auditoría y evento en una transacción"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "clinical-assistant-service",
+      "items": [
+        "RAG: responde solo con el corpus y cita la fuente",
+        "Sin IA: 503 en modo degradado",
+        "Estado de urgencias desde Kafka, nunca llama al triaje"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Garantías",
+      "items": [
+        "Reactivo de punta a punta, BlockHound en las pruebas",
+        "Ningún evento se pierde (outbox)",
+        "Una traza une los dos servicios"
+      ]
+    }
+  ]
+}

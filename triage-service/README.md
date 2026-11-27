@@ -4,6 +4,8 @@ Registra a los pacientes que llegan a urgencias, los **clasifica solo** por sus 
 cuánto esperan y, si alguien espera más de lo permitido (su **SLA**), lo **escala** y **alerta** al equipo médico.
 Todo queda **auditado** y cada cambio se publica como **evento en Kafka** para el asistente clínico.
 
+[![Registro, evento y escalamiento de punta a punta](../docs/diagramas/registro-y-escalamiento.svg)](../docs/diagramas/registro-y-escalamiento.svg)
+
 > Este servicio trabaja junto con [`clinical-assistant-service`](../clinical-assistant-service/README.md). Los dos
 > se levantan juntos con **un solo comando** desde la raíz del repositorio.
 

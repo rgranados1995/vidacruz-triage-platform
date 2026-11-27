@@ -1,0 +1,194 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "VidaCruz · RAG del asistente con tres compuertas (RN-05)",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "consulta",
+      "label": "Consulta"
+    },
+    {
+      "id": "compuertas",
+      "label": "Tres compuertas (RN-05)"
+    },
+    {
+      "id": "sin_contenido",
+      "label": "Sin contenido clínico",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "entrada",
+      "label": "Entrada",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "compuertas",
+      "label": "Tres compuertas",
+      "fromCol": 2,
+      "toCol": 4,
+      "variant": "security"
+    },
+    {
+      "id": "salida",
+      "label": "Respuesta",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "pregunta",
+    "valida",
+    "busqueda",
+    "claude",
+    "citas",
+    "respuesta"
+  ],
+  "nodes": [
+    {
+      "id": "pregunta",
+      "lane": "consulta",
+      "col": 0,
+      "type": "external",
+      "label": "Pregunta",
+      "sublabel": "POST /asistente/consulta",
+      "width": 150
+    },
+    {
+      "id": "valida",
+      "lane": "consulta",
+      "col": 1,
+      "type": "backend",
+      "label": "Valida la pregunta",
+      "sublabel": "3 a 1000 caracteres",
+      "width": 150
+    },
+    {
+      "id": "busqueda",
+      "lane": "compuertas",
+      "col": 2,
+      "type": "backend",
+      "label": "Búsqueda semántica",
+      "sublabel": "similitud ≥ 0,50",
+      "tag": "compuerta 1",
+      "width": 150
+    },
+    {
+      "id": "claude",
+      "lane": "compuertas",
+      "col": 3,
+      "type": "external",
+      "label": "Claude",
+      "sublabel": "JSON con esquema",
+      "tag": "compuerta 2",
+      "width": 150
+    },
+    {
+      "id": "citas",
+      "lane": "compuertas",
+      "col": 4,
+      "type": "security",
+      "label": "Valida las citas",
+      "sublabel": "solo fragmentos dados",
+      "tag": "compuerta 3",
+      "width": 150
+    },
+    {
+      "id": "respuesta",
+      "lane": "consulta",
+      "col": 5,
+      "type": "frontend",
+      "label": "Respuesta con fuentes",
+      "sublabel": "protocolo y sección",
+      "width": 150
+    },
+    {
+      "id": "aviso",
+      "lane": "sin_contenido",
+      "col": 2,
+      "type": "security",
+      "label": "Aviso: sin protocolo",
+      "sublabel": "fuentes vacías",
+      "width": 150
+    },
+    {
+      "id": "degradado",
+      "lane": "sin_contenido",
+      "col": 3,
+      "type": "messagebus",
+      "label": "503 modo degradado",
+      "sublabel": "Retry-After: 30",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "id": "consulta-valida",
+      "from": "pregunta",
+      "to": "valida",
+      "variant": "emphasis"
+    },
+    {
+      "id": "valida-busqueda",
+      "from": "valida",
+      "to": "busqueda",
+      "label": "embedding",
+      "variant": "emphasis"
+    },
+    {
+      "id": "busqueda-claude",
+      "from": "busqueda",
+      "to": "claude",
+      "label": "fragmentos E1..E3",
+      "variant": "emphasis"
+    },
+    {
+      "id": "claude-citas",
+      "from": "claude",
+      "to": "citas",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "citas-respuesta",
+      "from": "citas",
+      "to": "respuesta",
+      "label": "cita válida",
+      "variant": "emphasis"
+    },
+    {
+      "id": "busqueda-aviso",
+      "from": "busqueda",
+      "to": "aviso",
+      "label": "nada se parece",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "citas-aviso",
+      "from": "citas",
+      "to": "aviso",
+      "label": "cita inválida",
+      "variant": "security",
+      "role": "branch",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "route": "bottom-channel"
+    },
+    {
+      "id": "claude-degradado",
+      "from": "claude",
+      "to": "degradado",
+      "label": "IA no disponible",
+      "variant": "dashed",
+      "role": "error"
+    }
+  ]
+}
